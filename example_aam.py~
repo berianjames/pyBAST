@@ -1,0 +1,17 @@
+# pyBA test using some data from Adam Miller
+import numpy as np
+#import pyBA
+
+data = np.loadtxt('examples/astrom_match_stats')
+#objectsA = data[:,0:5]
+#objectsB = data[:,5:10]
+
+i = 0
+for entry in data:
+    mu = data[:,0:1]
+    sigma = np.array( [ [data[2], data[4]], [data[4],data[3]] ] )
+    objectsA[i] = pyBA.Bivarg( mu=mu, sigma=sigma)
+
+    i = i+1
+
+

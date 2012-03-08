@@ -11,14 +11,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   installation.rst
-   getting_started.rst
-   classes_and_objects.rst
-   parsing_data.rst
-   background_mapping.rst
-   distortion_mapping.rst
-   prediction_and_validation.rst
-   examples.rst
+
 
 Indices and tables
 ==================

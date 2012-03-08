@@ -10,7 +10,7 @@
     
     <title>Welcome to pyBA’s documentation! &mdash; pyBA 0.1 documentation</title>
     
-    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
     <script type="text/javascript">
@@ -26,7 +26,8 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <link rel="top" title="pyBA 0.1 documentation" href="#" /> 
+    <link rel="top" title="pyBA 0.1 documentation" href="#" />
+    <link rel="next" title="Installation" href="installation.html" /> 
   </head>
   <body>
     <div class="related">
@@ -35,36 +36,12 @@
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="installation.html" title="Installation"
+             accesskey="N">next</a> |</li>
         <li><a href="#">pyBA 0.1 documentation</a> &raquo;</li> 
       </ul>
-    </div>  
-
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
-          <div class="body">
-            
-  <div class="section" id="welcome-to-pyba-s-documentation">
-<h1>Welcome to pyBA&#8217;s documentation!<a class="headerlink" href="#welcome-to-pyba-s-documentation" title="Permalink to this headline">¶</a></h1>
-<p>Contents:</p>
-<div class="toctree-wrapper compound">
-<ul class="simple">
-</ul>
-</div>
-</div>
-<div class="section" id="indices-and-tables">
-<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
-<ul class="simple">
-<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
-<li><a class="reference internal" href="py-modindex.html"><em>Module Index</em></a></li>
-<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
-</ul>
-</div>
-
-
-          </div>
-        </div>
-      </div>
+    </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
   <h3><a href="#">Table Of Contents</a></h3>
@@ -75,6 +52,9 @@
 <li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
 </ul>
 
+  <h4>Next topic</h4>
+  <p class="topless"><a href="installation.html"
+                        title="next chapter">Installation</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="_sources/index.txt"
@@ -95,6 +75,64 @@
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
       </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="welcome-to-pyba-s-documentation">
+<h1>Welcome to pyBA&#8217;s documentation!<a class="headerlink" href="#welcome-to-pyba-s-documentation" title="Permalink to this headline">¶</a></h1>
+<p>Contents:</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classes_and_objects.html">Classes and objects</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="classes_and_objects.html#representing-astronomical-objects">Representing astronomical objects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="classes_and_objects.html#representing-transformations-between-images">Representing transformations between images</a></li>
+<li class="toctree-l2"><a class="reference internal" href="classes_and_objects.html#representing-astrometric-distortion-maps">Representing astrometric distortion maps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="parsing_data.html">Parsing data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="parsing_data.html#catalogue-i-o">Catalogue I/O</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parsing_data.html#interfacing-with-wcslib-and-pyfits"><em>Interfacing with wcslib and PyFITS</em></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="background_mapping.html">Mapping I: Background</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="background_mapping.html#statistical-theory">Statistical theory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="background_mapping.html#finding-a-best-fit-maximum-likelihood">Finding a best fit: maximum likelihood</a></li>
+<li class="toctree-l2"><a class="reference internal" href="background_mapping.html#simple-and-good-approximate-distribution">Simple (and good) approximate distribution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="background_mapping.html#finding-the-full-likelihood-distribution-mcmc">Finding the full likelihood distribution: MCMC</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="distortion_mapping.html">Mapping II: Distortion</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="distortion_mapping.html#gaussian-process-regression">Gaussian process regression</a></li>
+<li class="toctree-l2"><a class="reference internal" href="distortion_mapping.html#astrometric-distortion-solution">Astrometric distortion solution</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="prediction_and_validation.html">Prediction and validation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="prediction_and_validation.html#querying-the-mapping-of-a-location">Querying the mapping of a location</a></li>
+<li class="toctree-l2"><a class="reference internal" href="prediction_and_validation.html#cross-validation-of-an-astrometric-solution">(Cross-)validation of an astrometric solution</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
+<li><a class="reference internal" href="py-modindex.html"><em>Module Index</em></a></li>
+<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
       <div class="clearer"></div>
     </div>
     <div class="related">
@@ -103,6 +141,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              >index</a></li>
+        <li class="right" >
+          <a href="installation.html" title="Installation"
+             >next</a> |</li>
         <li><a href="#">pyBA 0.1 documentation</a> &raquo;</li> 
       </ul>
     </div>
