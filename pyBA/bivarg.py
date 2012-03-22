@@ -9,65 +9,6 @@
 import numpy as np
 from numpy.linalg import solve, det, cholesky, eig
 
-class Bivarg:
-    """ Implements bivariate gaussian structure and routines to modify it.
-    """
-
-    __author__ = "Berian James"
-    __version__ = "0.1"
-    __email__ = "berian@berkeley.edu"
-
-    def __init__(self,mu=np.array([0.,0.]),sigma=np.array([ [1.,0.],[0.,1.] ]),theta=0):
-        self.mu = np.squeeze(np.array(mu))
-        
-        self.E,self.V = eig(np.array(sigma))
-        self.E = np.diag(np.real(self.E))
-        U = np.array([ [np.cos(theta),-np.sin(theta)],
-                       [np.sin(theta), np.cos(theta)] ])
-        self.V = np.dot(U,self.V)
-        self.sigma = np.dot( self.V, np.dot(self.E,self.V.T) )
-
-        self.det = det(self.sigma)
-        self.chol = cholesky(self.sigma)
-        self.trace = np.trace(self.sigma)
-        self.theta = np.math.degrees(np.math.atan2(self.V[0,1],self.V[0,0]))
-        return
-        
-def distance(M,N):
-    """ Computes Bhattacharyya distance between two distributions
-    """
-    S = 0.5 * (N.sigma + M.sigma)
-    da = (1./8.) * np.dot( (N.mu-M.mu), solve(S, (N.mu-M.mu).T) )
-    #db = (1./2.) * np.log( det(S) / np.sqrt( det(N.E)*det(M.E) ) )
-    #return da + db
-    return da
-
-def transform(M,dmu=np.array([0,0]),L=np.array([1,1]),theta=0.,d0=np.array([0,0])):
-    """ Maps a bivariate gaussian distribution (M) to another
-    bivariate gaussian by translation (dmu), scaling of
-    the principal axes (L) and rotation (theta) about a given point (d0).
-    """
-    # Prep inputs
-    dmu = np.squeeze(dmu)
-    theta = np.squeeze(theta)
-    L = np.squeeze(L)
-    d0 = np.squeeze(d0)
-
-    # Calculate transformed centre
-    U = np.squeeze(np.array([ [np.cos(theta),-np.sin(theta)],
-                              [np.sin(theta), np.cos(theta)] ]))
-    mu = np.dot(U,(M.mu * L + dmu) - d0) + d0
-
-    # Calculate transformed covariance
-    L = np.diag(L)
-    V = np.dot(U,M.V)
-    E = np.dot(L,M.E)
-    sigma = np.dot( V, np.dot(E,V.T) ) 
-    
-    # Create new bivarg object with transformed values
-    N = Bivarg(mu,sigma,0)
-    return N
-
 def sample(M=Bivarg(),n=1):
     """ Draw n samples from bivariate distribution M
     """

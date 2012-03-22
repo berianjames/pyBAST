@@ -9,6 +9,7 @@
 #                    05-Mar-2012  added overloading __add__ and __sub__, sigma handling for Bivarg
 
 import numpy as np
+#import numexpr as ne
 from numpy.linalg import solve, det, cholesky, eig
 
 class Bgmap:
@@ -65,7 +66,6 @@ class Bgmap:
 
         return -0.5 * delta.dot( solve( sigma, delta ) )
 
-
 class Bivarg:
     """ Implements bivariate gaussian structure and routines to modify it.
     """
@@ -82,16 +82,43 @@ class Bivarg:
         elif sigma.size == 3:
             sigma = np.array( [ [sigma[0], sigma[2]], [sigma[2], sigma[1]] ] )
 
+        # Non-optimal code
+        #self.sigma = sigma
+        #self.det = det(self.sigma)
+        #self.trace = np.trace(self.sigma)
+
+        # Get determinant and trace for quick eigenvalue computation
+        #self.det = sigma[0,0]*sigma[1,1] - sigma[0,1]*sigma[1,0]
+        #self.trace = sigma[0,0] + sigma[1,1]
+
+        # Non-optimal code for eigenvalue computation?
         self.E,self.V = eig(np.array(sigma))
+        #epart = np.sqrt( self.trace*self.trace / 4. - self.det )
+        #self.E = np.array( [self.trace/2 + epart, self.trace/2 - epart] )
+        #if sigma[1,0] != 0:
+        #    self.V = np.array([ [self.E[0]-sigma[1,1], self.E[1]-sigma[1,1]], [sigma[1,0], sigma[1,0]] ])
+        #elif sigma[0,1] != 0:
+        #    self.V = np.array([ [sigma[0,1], sigma[0,1]], [self.E[0]-sigma[0,0], self.E[1]-sigma[0,0]] ])
+        #else:
+        #    self.V = np.array([ [1.,0.], [0.,1.] ])
+        
         self.E = np.diag(np.real(self.E))
-        U = np.array([ [np.cos(theta),-np.sin(theta)],
-                       [np.sin(theta), np.cos(theta)] ])
-        self.V = np.dot(U,self.V)
+        if theta!=0:
+            U = np.array([ [np.cos(theta),-np.sin(theta)],
+                           [np.sin(theta), np.cos(theta)] ])
+            self.V = np.dot(U,self.V)
+
         self.sigma = np.dot( self.V, np.dot(self.E,self.V.T) )
 
-        self.det = det(self.sigma)
-        self.chol = cholesky(self.sigma)
-        self.trace = np.trace(self.sigma)
+        sigma = self.sigma
+        self.det = sigma[0,0]*sigma[1,1] - sigma[0,1]*sigma[1,0]
+        self.trace = sigma[0,0] + sigma[1,1]
+
+        #self.chol = cholesky(self.sigma)
+        self.chol = np.array([ [np.sqrt(sigma[0,0]),0.],
+                               [sigma[0,1]/np.sqrt(sigma[0,0]), 
+                                np.sqrt( sigma[1,1]-sigma[1,0]*sigma[0,1]/sigma[0,0] ) ] ])
+
         self.theta = np.math.degrees(np.math.atan2(self.V[0,1],self.V[0,0]))
         return
 
@@ -131,7 +158,7 @@ class Bivarg:
         sigma = np.dot( V, np.dot(E,V.T) ) 
     
         # Create new bivarg object with transformed values
-        return Bivarg(mu,sigma)
+        return LittleBivarg(mu,sigma)
 
     def sample(self,n=1):
         """ Draw n samples from bivariate distribution M
@@ -143,4 +170,24 @@ class Bivarg:
             vals[i] = self.mu + np.dot( self.chol, stds[:,i] ).T
             
         return vals
+
+class LittleBivarg(Bivarg):
+    """ This is a minimal bivarg class that is used for representing
+    transformed Bivargs that are going to be thrown away later, but might
+    be used for likelihood computations.
+    """
+    def __init__(self,mu=np.array([0.,0.]),sigma=np.array([ [1.,0.],[0.,1.] ])):
+        self.mu = mu
+        self.sigma = sigma
+        self.det = sigma[0,0]*sigma[1,1] - sigma[1,0]*sigma[0,1]
+        
+        return
+
+    def promote(self):
+        """ Promotes a LitteBivarg to a full Bivarg. This might happen
+        when a transformed Bivarg needs to be used for transformation in
+        its own right.
+        Good job LittleBivarg!
+        """
+        return Bivarg(mu=self.mu,sigma=self.sigma)
 
