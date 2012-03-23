@@ -14,10 +14,17 @@ Typical use might look like::
     from pyBA import bivarg
     # ... more basic example code here
 
-It aspires to (but does not yet) provide:
+It provides:
 
-* MCMC likelihood computation (using either 
-  emcee or pymc)
+* Classes for respresenting astronomical objects
+  and astrometric mappings as probability distributions
+
+* Maximum likelihood and multivariate normal likelihood
+  approximation routines.
+
+* MCMC likelihood computation (using emcee)
+
+It aspires to (but does not yet) provide:
 
 * A full gaussian process astrometic analysis
   (perhaps using scikits.learn)
