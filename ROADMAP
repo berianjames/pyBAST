@@ -2,3 +2,4 @@ Long-term strategic road map
 
 * Proper motion priors
 * Incorpoate magnitude information
+* Add parallel functionality to likelihood computation (at present, it is not obvious how this will help: the likelihood call takes ~ 0.1 seconds for 1000 ties and so a way of distributing tasks at each iteration of the fitter would be needed---this is in the scope of scipy. On the other hand, emcee is straight-forwardly parallel.)

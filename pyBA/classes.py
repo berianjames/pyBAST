@@ -66,6 +66,16 @@ class Bgmap:
 
         return -0.5 * delta.dot( solve( sigma, delta ) )
 
+    def sample(self,n=1):
+        """ Returns n samples from a Bgmap distribution.
+        """
+        # N.B.! Won't work with covariance matrices containings infs!
+        
+        #vals = np.zeros( (n,len(self.mu)) )
+        stds = np.random.randn( 2,len(self.mu) )
+        chol = cholesky(self.sigma)
+        return [self.mu + np.dot( chol, stds[:,i] ).T for i in range(n)]
+            
 class Bivarg:
     """ Implements bivariate gaussian structure and routines to modify it.
     """

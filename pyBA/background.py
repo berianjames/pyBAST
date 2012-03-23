@@ -116,3 +116,31 @@ def MCMC(M,N,mu0=Bgmap().mu,prior=Bgmap(),nsamp=1000,nwalkers=20):
     sampler.run_mcmc(p0, nsamp)
 
     return sampler
+
+def cross_validate(M,N,k=2,mu0=Bgmap().mu,prior=Bgmap()):
+    """ Performs k-fold cross-validation on the normal approximation
+    to the likelihood surface for the mapping between the tie object
+    lists M and N.
+    """
+    from sklearn.cross_validation import KFold
+
+    # 1. Partition the data
+    nties = len(M)
+    n = nties / k
+
+    # Randomly permute the indices, just in case
+    ix_all = np.random.permutation(nties)
+    
+    # Get lists of indices
+    kf = KFold(nties,k,indices=True)
+    i = 0
+    partition = np.empty(k,dtype='object')
+    for train in kf: 
+        partition[i] = ix_all[train[1]]
+        i += 1
+
+
+    # 2. Compute MAP Bgmap with normal approximation for each partition
+    #    Each partition set is independent, so these can be done in parallel
+
+    # 3. Compute variance between the partitions
