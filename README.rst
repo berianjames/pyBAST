@@ -3,7 +3,7 @@ pyBA: Bayesian Astrometry in Python
 ***********************************
 
 :Date: March 23, 2012
-:Version: 0.1
+:Version: 0.2
 :Authors: Berian James
 :Web site: https://github.com/berianjames/pyBA
 :Copyright: This document has been placed in the public domain.
@@ -25,13 +25,13 @@ Typical use might look like::
     from pyBA import bivarg
     # ... more basic example code here
 
-It provides:
+pyBA provides:
 
 * Classes for respresenting astronomical objects
   and astrometric mappings as probability distributions
 
 * Maximum likelihood and multivariate normal likelihood
-  approximation routines.
+  approximation routines with these objects.
 
 * MCMC likelihood computation (using emcee)
 
@@ -43,6 +43,13 @@ It aspires to (but does not yet) provide:
 * An interface with wcslib and pyfits
 
 * A helpful set of examples
+
+See the TODO and ROADMAP documents for short- and long-term
+targets, respectively.
+
+The rest of this README provides a short overview of the
+package. Detailed instructions will be provided in the
+documentation (by version 0.3).
 
 Representation of astronomical objects
 ======================================
