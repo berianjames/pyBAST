@@ -22,14 +22,12 @@ objectsB = np.array( [ pyBA.Bivarg(mu=data[i,5:7],sigma=data[i,7:10]) for i in r
 #obj_diff = [ objectsA[i] - objectsB[i] for i in range(nties) ]
 
 # Find maximum likelihood background transformation
-#ix = np.random.randint(0,nties,500)
-ix = np.arange(len(objectsA))
+ix = np.random.randint(0,nties,100)
+#ix = np.arange(len(objectsA))
 #print ix
 
 from pyBA.background import distance
-from pyBA.background import ML
 t1 = timeit.time.time()
-#P = pyBA.background.ML( objectsA[ix], objectsB[ix] )
 #P = pyBA.background.MAP( objectsA[ix], objectsB[ix], prior=pyBA.Bgmap(), norm_approx=True );
 #test1 = np.sum( distance(objectsA[i], objectsB[i]) for i in xrange(len(objectsA)) )
 t2 = timeit.time.time()
@@ -37,8 +35,9 @@ print t2 - t1
 
 t1 = timeit.time.time()
 S = pyBA.background.suggest_prior(objectsA,objectsB)
-P2 = pyBA.background.ML( objectsA[ix], objectsB[ix], mu0=S.mu )
-#P = pyBA.background.MAP( objectsA[ix], objectsB[ix], prior=pyBA.Bgmap(), norm_approx=True );
+#P2 = pyBA.background.ML( objectsA[ix], objectsB[ix], mu0=S.mu )
+#P = pyBA.background.MAP( objectsA[ix], objectsB[ix], mu0=S.mu, prior=pyBA.Bgmap(), norm_approx=True )
+Psamp = pyBA.background.MCMC( objectsA[ix], objectsB[ix], mu0 = S.mu, nsamp=10)
 #test1 = np.sum( distance(objectsA[i], objectsB[i]) for i in xrange(len(objectsA)) )
 t2 = timeit.time.time()
 print t2 - t1

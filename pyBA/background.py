@@ -50,6 +50,10 @@ def MAP(M,N,mu0=Bgmap().mu,prior=Bgmap(),norm_approx=True):
     in the two frames, and perhaps a suggested starting point 
     for the fitter and a prior distribution on the background
     mapping.
+
+    Can also approximate background mapping likelihood distribution as a 
+    multivariate normal distribution and reports back the mean and
+    covariance matrix for the distribution.
     """
     from scipy.optimize import fmin_bfgs
 
@@ -63,7 +67,7 @@ def MAP(M,N,mu0=Bgmap().mu,prior=Bgmap(),norm_approx=True):
 
         return llik + prior.llik(P)
 
-    ML = fmin_bfgs( lnprob,prior.mu,args=(M,N,prior),callback=None,gtol=0.1 )
+    ML = fmin_bfgs( lnprob,mu0,args=(M,N,prior),callback=None,gtol=0.1,disp=False )
 
     if norm_approx is False:
         return Bgmap(mu=ML)
@@ -83,39 +87,32 @@ def MAP(M,N,mu0=Bgmap().mu,prior=Bgmap(),norm_approx=True):
                 sigma[i,j] = sigma[i,j] / (4*delta*delta)
                 sigma[j,i] = sigma[i,j]
 
-        return Bgmap( mu=ML, sigma=sigma )
+        return Bgmap( mu=ML, sigma=inv(sigma) )
 
-def ML(M,N,mu0=Bgmap().mu):
-    """ Find peak of the likelihood distribution, ignoring information
-    about priors on the mapping parameters. Input is two lists
-    of bivargs of equal length, representing pairs of objects in the 
-    two frames, and perhaps a starting point mu0 for the fitter.
+def MCMC(M,N,mu0=Bgmap().mu,prior=Bgmap(),nsamp=1000,nwalkers=20):
+    """ Performs MCMC computation of likelihood distribution for the 
+    background mapping between two frames.
     """
-    from scipy.optimize import fmin_bfgs
+    import emcee
 
-    def lnprob(P,M=M,N=N):
+    def lnprob(P,M=M,N=N,prior=prior):
         """ Returns the log probability (\propto -0.5*chi^2) of the
         mapping parameter set P for mapping between two sets of objects
         M and N.
         """
+        llik = -0.5 * np.sum( distance(M[i],N[i].transform(P))
+                          for i in xrange(len(M)) )
 
-        return 0.5 * sum( distance(M[i],N[i].transform(P))
-                                    for i in xrange(len(M)) )
+        if np.all(np.isinf(np.diag(prior.sigma))):
+            # De-facto uniform prior; don't bother computing prior llik.
+            return llik
+        else:
+            return llik + prior.llik(P)
 
-    def debug_callback(xk):
-        print xk#, lnprob(xk)
-        return
-
-    #return fmin_powell( lnprob,mu0,args=(M,N),callback=debug_callback,ftol=0.1)
-    return fmin_bfgs( lnprob,mu0,args=(M,N),callback=debug_callback,gtol=0.1)
-    #return fmin( lnprob, mu0, args=(M,N), callback=debug_callback, disp=True )
+    ndim = 7
+    p0 = [mu0+np.random.randn(ndim) for i in xrange(nwalkers)]
     
-def NA(M,N,pri=Bgmap()):
-    """Approximates background mapping likelihood distribution as a 
-    multivariate normal distribution and reports back the mean and
-    covariance matrix for the distribution.
-    """
-    
-# def MCMC(M,N):
-# Performs MCMC computation of likelihood distribution for the 
-#  background mapping between two frames.
+    sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=[M,N,prior])
+    sampler.run_mcmc(p0, nsamp)
+
+    return sampler
