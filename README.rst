@@ -1,3 +1,14 @@
+***********************************
+pyBA: Bayesian Astrometry in Python
+***********************************
+
+:Date: March 23, 2012
+:Version: 0.1
+:Authors: Berian James
+:Web site: https://github.com/berianjames/pyBA
+:Copyright: This document has been placed in the public domain.
+:License: This code is released under the MIT license.
+
 =========================
 pYBA: Bayesian Astrometry
 =========================
