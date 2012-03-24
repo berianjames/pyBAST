@@ -37,7 +37,7 @@ t1 = timeit.time.time()
 S = pyBA.background.suggest_prior(objectsA,objectsB)
 #P2 = pyBA.background.ML( objectsA[ix], objectsB[ix], mu0=S.mu )
 #P = pyBA.background.MAP( objectsA[ix], objectsB[ix], mu0=S.mu, prior=pyBA.Bgmap(), norm_approx=True )
-Psamp = pyBA.background.MCMC( objectsA[ix], objectsB[ix], mu0 = S.mu, nsamp=10)
+#Psamp = pyBA.background.MCMC( objectsA[ix], objectsB[ix], mu0 = S.mu, nsamp=10)
 #test1 = np.sum( distance(objectsA[i], objectsB[i]) for i in xrange(len(objectsA)) )
 t2 = timeit.time.time()
 print t2 - t1

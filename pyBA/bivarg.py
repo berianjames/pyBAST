@@ -9,17 +9,6 @@
 import numpy as np
 from numpy.linalg import solve, det, cholesky, eig
 
-def sample(M=Bivarg(),n=1):
-    """ Draw n samples from bivariate distribution M
-    """
-    
-    vals = np.zeros( (n,2) )
-    stds = np.random.randn(2,n)
-    for i in range(0,n):
-        vals[i] = M.mu + np.dot( M.chol, stds[:,i] ).T
-
-    return vals
-
 def draw(pdfs):
     """ Plot bivariates with matplotlib
     """

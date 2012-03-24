@@ -1,6 +1,6 @@
-***********************************
-pyBA: Bayesian Astrometry in Python
-***********************************
+***************************************
+ pyBAST: Bayesian Astrometry in Python
+***************************************
 
 :Date: March 23, 2012
 :Version: 0.2
@@ -9,11 +9,11 @@ pyBA: Bayesian Astrometry in Python
 :Copyright: This document has been placed in the public domain.
 :License: This code is released under the MIT license.
 
-=========================
-pYBA: Bayesian Astrometry
-=========================
+===========================
+pyBAST: Bayesian Astrometry
+===========================
 
-pyBA is a Python implementation of the Bayesian Astrometry 
+pyBAST is a Python implementation of the Bayesian Astrometry 
 framework. It provides a module for handling probability
 distribution that represent astronomical objects and for 
 analysing the changes to these distributions between images.
@@ -25,7 +25,7 @@ Typical use might look like::
     from pyBA import bivarg
     # ... more basic example code here
 
-pyBA provides:
+pyBAST provides:
 
 * Classes for respresenting astronomical objects
   and astrometric mappings as probability distributions

@@ -142,5 +142,6 @@ def cross_validate(M,N,k=2,mu0=Bgmap().mu,prior=Bgmap()):
 
     # 2. Compute MAP Bgmap with normal approximation for each partition
     #    Each partition set is independent, so these can be done in parallel
+    return map( lambda part: MAP(M[part],N[part],mu0=mu0,prior=prior), partition )
 
     # 3. Compute variance between the partitions
