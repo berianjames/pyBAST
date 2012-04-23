@@ -136,7 +136,7 @@ def cross_validate(M,N,k=2,mu0=Bgmap().mu,prior=Bgmap()):
     i = 0
     partition = np.empty(k,dtype='object')
     for train in kf: 
-        partition[i] = ix_all[train[1]]
+        partition[i] = ix_all[train[0]]
         i += 1
 
 
@@ -144,4 +144,3 @@ def cross_validate(M,N,k=2,mu0=Bgmap().mu,prior=Bgmap()):
     #    Each partition set is independent, so these can be done in parallel
     return map( lambda part: MAP(M[part],N[part],mu0=mu0,prior=prior), partition )
 
-    # 3. Compute variance between the partitions
