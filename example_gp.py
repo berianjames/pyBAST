@@ -19,7 +19,7 @@ objectsB = np.array( [ pyBA.Bivarg(mu=data[i,5:7],sigma=data[i,7:10]) for i in r
 # Select random subset of tie objects
 nsamp = 500
 ix = np.random.permutation(nties)[:nsamp]
-print ix
+#print ix
 
 # Find maximum likelihood background transformation
 from pyBA.background import distance
@@ -34,44 +34,38 @@ print P.mu
 # Gaussian process
 from pyBA.distortion import astrometry_mean, astrometry_cov
 mx,my = astrometry_mean(P)
-C = astrometry_cov()
-
-#print mx
-#print my
-#print C
-
-# Grid for regression
-xmin = min([o.mu[0] for o in objectsA])
-xmax = max([o.mu[0] for o in objectsA])
-ymin = min([o.mu[1] for o in objectsA])
-ymax = max([o.mu[1] for o in objectsA])
+Cx = astrometry_cov(scale = 100., amp = 1.)
+Cy = astrometry_cov(scale = 100., amp = 1.)
 
 nres = 30
-xs = np.linspace(xmin,xmax,nres)
-ys = np.linspace(ymin,ymax,nres)
-x,y = np.meshgrid(xs,ys)
-xarr = np.array([x.flatten(),y.flatten()]).T
 
-# Mapping from mean function
-#vx = mx(xarr)
-#vy = my(xarr)
+# Show mean function (the background transformation)
+#from pyBA.plotting import draw_MAP_background
+#draw_MAP_background(objectsA[ix],
+#                    objectsB[ix],
+#                    mx, my, Cx, Cy,
+#                    res=nres )
 
-# Regression from mean function without observation
-from pymc.gp import point_eval
-xout = point_eval(mx, C, xarr)
-yout = point_eval(my, C, xarr)
-vx = xout[0]
-vy = yout[0]
+# Draw realisation of distortion map prior to observation
+from pyBA.plotting import draw_realisation
+#draw_realisation(objectsA[ix],
+#                 objectsB[ix],
+#                 mx, my, Cx, Cy,
+#                 res = nres)
 
-xobs = np.array([objectsA[i].mu[0] for i in ix])
-yobs = np.array([objectsA[i].mu[1] for i in ix])
-vxobs = np.array([objectsA[i].mu[0] - objectsB[i].mu[0] for i in ix ])
-vyobs = np.array([objectsA[i].mu[1] - objectsB[i].mu[1] for i in ix ])
+# Observe gaussian processes
+from pyBA.distortion import regression
+mxo, Cxo = regression(objectsA[ix],
+                      objectsB[ix],
+                      mx, Cx, direction='x')
 
-# Plot mean function vectors
-from pylab import figure, quiver, show
-fig = figure(figsize=(16,16))
-ax = fig.add_subplot(111, aspect='equal')
-quiver(x,y,vx,vy,scale_units='width',scale=nres*nres)
-quiver(xobs,yobs,vxobs,vyobs,color='r',scale_units='width',scale=nres*nres)
-show()
+myo, Cyo = regression(objectsA[ix],
+                      objectsB[ix],
+                      my, Cy, direction='y')
+
+# Draw realisation of distortion map after observation
+draw_realisation(objectsA[ix],
+                 objectsB[ix],
+                 mxo, myo, Cxo, Cyo,
+                 res = nres)
+
