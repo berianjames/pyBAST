@@ -1,6 +1,6 @@
 import numpy as np
 from numpy import linspace, array, meshgrid, sqrt
-from pyBA.classes import Bgmap
+from pyBA.classes import Bgmap, Bivarg
 from numpy.linalg import norm
 #from pymc.gp import Mean, Covariance, Realization, matern, point_eval, observe
 
@@ -38,7 +38,7 @@ def astrometry_mean(T=Bgmap()):
         rx = U[0,0]*p[:,0] + U[0,1]*p[:,1]
 
         # Return x-displacement from original value
-        return rx + d0[0] - x[:,0]
+        return x[:,0] - rx + d0[0]
 
     def my(x):
         """ Takes n x 2 array of coordinates and provides y-
@@ -51,9 +51,38 @@ def astrometry_mean(T=Bgmap()):
         ry = U[1,0]*p[:,0] + U[1,1]*p[:,1]
 
         # Return y-displacement from original value
-        return ry + d0[1] - x[:,1]
+        return x[:,1] - ry + d0[1]
 
     return Mean(mx), Mean(my)
+
+def compute_displacements(objectsA = np.array([ Bivarg() ]),
+                          objectsB = np.array([ Bivarg() ])):
+    """From arrays of tie objects, return the locations of the centres
+    of the first set of objects, and the displacements from this location
+    to the tie object in the second list. Used in plotting to show the
+    displacement between image frames.
+    """
+
+    nobj = len(objectsA)
+    xobs = np.array([o.mu[0] for o in objectsA])
+    yobs = np.array([o.mu[1] for o in objectsA])
+    vxobs = np.array([objectsB[i].mu[0] - objectsA[i].mu[0] for i in range(nobj) ])
+    vyobs = np.array([objectsB[i].mu[1] - objectsA[i].mu[1] for i in range(nobj) ])
+    return xobs, yobs, vxobs, vyobs
+
+def compute_residual(objectsA, objectsB, mx, my):
+    """Compute residual between tie object displacements and 
+    mean function of Gaussian process."""
+
+    # Extract centres of objects in each frame
+    obsA = array([o.mu for o in objectsA])
+    obsB = array([o.mu for o in objectsB])
+
+    # Compute residual between empirical displacements and mean function
+    dx = (obsB[:,0] - obsA[:,0]) - mx(obsB)
+    dy = (obsB[:,1] - obsA[:,1]) - my(obsB)
+
+    return dx, dy
 
 def regression(objectsA, objectsB, M, C, direction='x'):
     """ Perform regression on the gaussian processes for the 
@@ -67,7 +96,7 @@ def regression(objectsA, objectsB, M, C, direction='x'):
            C - Gaussian process covariance function
     """
 
-    from pyBA.plotting import compute_displacements
+    #from pyBA.plotting import compute_displacements
     from pymc.gp import observe
 
     # Compute displacements between frames for tie objects
@@ -89,3 +118,24 @@ def regression(objectsA, objectsB, M, C, direction='x'):
             obs_vals = data)
 
     return M,C
+
+def MAP_hyperparameters(M, C, objectsA, objectsB, direction='x'):
+    """Extremise the GP hyperparmaters based on the observed
+    displacements between image frames."""
+    
+    #from pyBA.plotting import compute_displacements
+
+    # Compute displacements between frames for tie objects
+    xobs, yobs, vxobs, vyobs = compute_displacements(objectsA, objectsB)
+
+    obs = np.array([xobs.flatten(), yobs.flatten()]).T
+
+    # Define residual displacement from mean function
+    dx, dy = compute_residual(objectsA, objectsB, M)
+    if direction is 'x':
+        data = dx
+    elif direction is 'y':
+        data = dy
+
+    # Define objective function
+    

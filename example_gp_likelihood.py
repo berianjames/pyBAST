@@ -17,7 +17,7 @@ objectsB = np.array( [ pyBA.Bivarg(mu=data[i,5:7],sigma=data[i,7:10]) for i in r
 #obj_diff = [ objectsA[i] - objectsB[i] for i in range(nties) ]
 
 # Select random subset of tie objects
-nsamp = 500
+nsamp = 100
 ix = np.random.permutation(nties)[:nsamp]
 #print ix
 
@@ -70,6 +70,11 @@ nres = 30
 #                 mxo, myo, Cxo, Cyo,
 #                 res = nres)
 
+# Plot residuals
+from pyBA.plotting import draw_MAP_residuals
+draw_MAP_residuals(objectsA[ix], objectsB[ix], mx, my)
+draw_MAP_residuals(objectsA[ix], objectsB[ix], mx, my, scaled='yes')
+
 # Extremise GP hyperparameters
-from pyBA.distortion import MAP_hyperparameters
-cx_MAP = MAP_hyperparameters(M, C, objectsA, objectsB)
+#from pyBA.distortion import MAP_hyperparameters
+#cx_MAP = MAP_hyperparameters(M, C, objectsA, objectsB)

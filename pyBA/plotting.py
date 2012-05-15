@@ -1,29 +1,36 @@
-from pylab import plot, show, quiver, figure
+from pylab import plot, show, quiver, figure, gca
 from matplotlib.patches import Ellipse
 import numpy as np
 from pyBA.classes import Bivarg, Bgmap
 from pymc.gp import Mean, Covariance, matern
 
-def draw_objects(objects=np.array( [Bivarg()] )):
+def draw_objects(objects=np.array( [Bivarg()] ), replot='no'):
     ells = [Ellipse(xy=O.mu, width=O.sigma[0,0],
                     height= O.sigma[1,1], angle = O.theta)
             for O in objects]
 
-    fig = figure(figsize=(10,10))
-    ax = fig.add_subplot(111, aspect='equal')
+    # Decide if plot is to be on top of whatever is already plotted
+    if replot is 'no':
+        fig = figure(figsize=(10,10))
+        ax = fig.add_subplot(111, aspect='equal')
+    else:
+        ax = gca()
+
     for e in ells:
         ax.add_artist(e)
         e.set_clip_box(ax.bbox)
-        #e.set_alpha(.1)
+        e.set_alpha(.1)
 
-    xmin = min([e.center[0]-e.width for e in ells])
-    xmax = max([e.center[0]+e.width for e in ells])
-    ymin = min([e.center[1]-e.height for e in ells])
-    ymax = max([e.center[1]+e.height for e in ells])
+    #xmin = min([e.center[0]-e.width for e in ells])
+    #xmax = max([e.center[0]+e.width for e in ells])
+    #ymin = min([e.center[1]-e.height for e in ells])
+    #ymax = max([e.center[1]+e.height for e in ells])
 
-    ax.set_xlim(xmin, xmax)
-    ax.set_ylim(ymin, ymax)
-    show()
+    #ax.set_xlim(xmin, xmax)
+    #ax.set_ylim(ymin, ymax)
+
+    if replot is 'no':
+        show()
 
     return ells
 
@@ -47,21 +54,6 @@ def make_grid(objects = np.array([ Bivarg() ]), res=30):
 
     return x,y
 
-def compute_displacements(objects = np.array([ Bivarg() ]),
-                          objectsB = np.array([ Bivarg() ])):
-    """From arrays of tie objects, return the locations of the centres
-    of the first set of objects, and the displacements from this location
-    to the tie object in the second list. Used in plotting to show the
-    displacement between image frames.
-    """
-
-    nobj = len(objects)
-    xobs = np.array([o.mu[0] for o in objects])
-    yobs = np.array([o.mu[1] for o in objectsB])
-    vxobs = np.array([objects[i].mu[0] - objectsB[i].mu[0] for i in range(nobj) ])
-    vyobs = np.array([objects[i].mu[1] - objectsB[i].mu[1] for i in range(nobj) ])
-    return xobs, yobs, vxobs, vyobs
-
 def draw_MAP_background(objects = np.array([ Bivarg() ]),
                         objectsB = np.array([ Bivarg() ]),
                         mx=Mean(lambda x: x-x),
@@ -74,6 +66,7 @@ def draw_MAP_background(objects = np.array([ Bivarg() ]),
     displacements from lists of tie objects.
     """
     from pymc.gp import point_eval
+    from pyBA.distortion import compute_displacements
     
     # Grid for regression
     x,y = make_grid(objects,res=res)
@@ -98,7 +91,38 @@ def draw_MAP_background(objects = np.array([ Bivarg() ]),
 
     return
 
-def draw_realisation(objects = np.array([ Bivarg() ]),
+def draw_MAP_residuals(objectsA, objectsB, mx, my, scaled='no'):
+    from pyBA.distortion import compute_displacements, compute_residual
+    from pymc.gp import point_eval
+    from numpy import array
+    
+    # Compute displacements between frames for tie objects
+    xobs, yobs, vxobs, vyobs = compute_displacements(objectsA, objectsB)
+
+    # Compute residual
+    dx, dy = compute_residual(objectsA, objectsB, mx, my)
+
+    # Draw residuals
+    fig = figure(figsize=(16,16))
+    ax = fig.add_subplot(111, aspect='equal')
+    if scaled is 'yes':
+        # Allow relative scaling of arrows
+        quiver(xobs,yobs,dx,dy)
+    else:
+        # Show residuals in absolute size (often very tiny), with uncertainties
+
+        # Also plot error ellipses
+        ellipses = array([ Bivarg( mu = array([xobs[i] + dx[i], yobs[i] + dy[i]]),
+                                   sigma = objectsA[i].sigma + objectsB[i].sigma )
+                           for i in range(len(objectsA)) ])
+        draw_objects(ellipses, replot='yes')
+
+        # Residuals
+        quiver(xobs,yobs,dx,dy,color='r', angles='xy', scale_units='xy', scale=1)
+    ax.autoscale(enable=None, axis='both', tight=True)
+    show()
+
+def draw_realisation(objectsA = np.array([ Bivarg() ]),
                      objectsB = np.array([ Bivarg() ]),
                      mx=Mean(lambda x: x-x),
                      my=Mean(lambda y: y-y),
@@ -106,6 +130,7 @@ def draw_realisation(objects = np.array([ Bivarg() ]),
                      Cy=Covariance(eval_fun=matern.euclidean, diff_degree=1.4, amp = .4, scale = .1), 
                      res = 30):
     from pymc.gp import Realization, point_eval
+    from pyBA.distortion import compute_displacements
 
     # Grid for regression
     x,y = make_grid(objects,res=res)
@@ -120,7 +145,7 @@ def draw_realisation(objects = np.array([ Bivarg() ]),
     vy = Ry(xarr)
 
     # Compute empirical displacements
-    xobs, yobs, vxobs, vyobs = compute_displacements(objects, objectsB)
+    xobs, yobs, vxobs, vyobs = compute_displacements(objectsA, objectsB)
 
     # Matplotlib plotting
     fig = figure(figsize=(16,16))
