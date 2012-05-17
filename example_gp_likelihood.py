@@ -32,26 +32,27 @@ print t2 - t1
 print P.mu
 
 # Gaussian process
-from pyBA.distortion import astrometry_mean, astrometry_cov
-mx,my = astrometry_mean(P)
-Cx = astrometry_cov(scale = 100., amp = 1.)
-Cy = astrometry_cov(scale = 100., amp = 1.)
+#from pyBA.distortion import astrometry_mean, astrometry_cov
+#mx,my = astrometry_mean(P)
+#Cx = astrometry_cov(scale = 100., amp = 1.)
+#Cy = astrometry_cov(scale = 100., amp = 1.)
+
+# Create distortion map object
+D = pyBA.Dmap(P,objectsA[ix], objectsB[ix])
 
 nres = 30
 
 # Show mean function (the background transformation)
-#from pyBA.plotting import draw_MAP_background
-#draw_MAP_background(objectsA[ix],
-#                    objectsB[ix],
-#                    mx, my, Cx, Cy,
-#                    res=nres )
+#D.draw_background(res=nres)
 
 # Draw realisation of distortion map prior to observation
-#from pyBA.plotting import draw_realisation
-#draw_realisation(objectsA[ix],
-#                 objectsB[ix],
-#                 mx, my, Cx, Cy,
-#                 res = nres)
+#D.draw_realisation(res=nres)
+
+# Plot residuals
+D.draw_residuals(res=nres)
+
+# Condition GP hyperparameters
+#D.condition()
 
 # Observe gaussian processes
 #from pyBA.distortion import regression
@@ -69,11 +70,6 @@ nres = 30
 #                 objectsB[ix],
 #                 mxo, myo, Cxo, Cyo,
 #                 res = nres)
-
-# Plot residuals
-from pyBA.plotting import draw_MAP_residuals
-draw_MAP_residuals(objectsA[ix], objectsB[ix], mx, my)
-draw_MAP_residuals(objectsA[ix], objectsB[ix], mx, my, scaled='yes')
 
 # Extremise GP hyperparameters
 #from pyBA.distortion import MAP_hyperparameters

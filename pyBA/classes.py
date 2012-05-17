@@ -17,7 +17,7 @@ class Bgmap:
     """
 
     __author__ = "Berian James"
-    __version__ = "0.1"
+    __version__ = "0.2"
     __email__ = "berian@berkeley.edu"
 
     def __init__(self, 
@@ -81,7 +81,7 @@ class Bivarg:
     """
 
     __author__ = "Berian James"
-    __version__ = "0.1"
+    __version__ = "0.2"
     __email__ = "berian@berkeley.edu"
 
     def __init__(self,mu=np.array([0.,0.]),sigma=np.array([ [1.,0.],[0.,1.] ]),theta=0):
@@ -201,3 +201,75 @@ class LittleBivarg(Bivarg):
         """
         return Bivarg(mu=self.mu,sigma=self.sigma)
 
+class Dmap:
+    """ Implements distortion map class for astrometry, a gaussian process.
+    """
+
+    __author__ = "Berian James"
+    __version__ = "0.2"
+    __email__ = "berian@berkeley.edu"
+
+    def __init__(self,P,A,B,scale=100.0,amp=1.0):
+        """ Create instance of distortion map from a background mapping
+        (Bgmap object P) and objects in each frame (Bivarg arrays A and B).
+        """
+        from pyBA.distortion import astrometry_mean, astrometry_cov
+
+        self.P = P
+        self.A = A
+        self.B = B
+
+        # Default GP hyperparameters
+        self.scale = scale
+        self.amp = amp
+
+        # Create gaussian process parts
+        self.mx, self.my = astrometry_mean(P)
+        #self.M =
+
+        self.C = astrometry_cov(scale=self.scale,amp=self.amp)
+        self.cx = self.C
+        self.cy = self.C
+
+        return 
+
+    def draw_background(self, res=30):
+        """ Method to draw maximum likelihood background mapping 
+        on grid of given resolution."""
+
+        from pyBA.plotting import draw_MAP_background
+        draw_MAP_background(self.A, self.B,
+                            self.mx, self.my, self.cx, self.cy,
+                            res = res )
+        return
+
+    def draw_realisation(self, res=30):
+        """ Draw realisation from Dmap gaussian process and
+        plot it on grid of given resolution."""
+
+        from pyBA.plotting import draw_realisation
+        draw_realisation(self.A, self.B,
+                         self.mx, self.my, self.cx, self.cy,
+                         res = res)
+
+        return
+
+    def draw_residuals(self, res=30, scaled='no'):
+        """ Draw residuals of object mappings between frames
+        from background mapping."""
+
+        from pyBA.plotting import draw_MAP_residuals
+        draw_MAP_residuals(self.A, self.B, 
+                           self.mx, self.my, 
+                           scaled=scaled)
+
+        return
+
+    #def observe(self) ???
+
+    def condition(self):
+        """ Conditions hyper-parameters of gaussian process.
+        """
+        
+        return
+        
