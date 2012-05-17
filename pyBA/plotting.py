@@ -133,7 +133,7 @@ def draw_realisation(objectsA = np.array([ Bivarg() ]),
     from pyBA.distortion import compute_displacements
 
     # Grid for regression
-    x,y = make_grid(objects,res=res)
+    x,y = make_grid(objectsA,res=res)
 
     # Draw realisation of gaussian process x- and y-components
     Rx = Realization(mx, Cx)
