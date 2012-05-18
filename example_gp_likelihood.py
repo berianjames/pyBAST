@@ -15,7 +15,7 @@ t2 = timeit.time.time()
 print t2 - t1
 
 # Select random subset of tie objects
-nsamp = 500
+nsamp = 200
 ix = np.random.permutation(nties)[:nsamp]
 #print ix
 

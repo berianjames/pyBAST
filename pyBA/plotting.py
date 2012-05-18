@@ -21,14 +21,7 @@ def draw_objects(objects=np.array( [Bivarg()] ), replot='no'):
         e.set_clip_box(ax.bbox)
         e.set_alpha(.1)
 
-    #xmin = min([e.center[0]-e.width for e in ells])
-    #xmax = max([e.center[0]+e.width for e in ells])
-    #ymin = min([e.center[1]-e.height for e in ells])
-    #ymax = max([e.center[1]+e.height for e in ells])
-
-    #ax.set_xlim(xmin, xmax)
-    #ax.set_ylim(ymin, ymax)
-
+    ax.autoscale(enable=None, axis='both', tight=True)
     if replot is 'no':
         show()
 
@@ -54,7 +47,7 @@ def make_grid(objects = np.array([ Bivarg() ]), res=30):
 
     return x,y
 
-def draw_MAP_background(objects = np.array([ Bivarg() ]),
+def draw_MAP_background(objectsA = np.array([ Bivarg() ]),
                         objectsB = np.array([ Bivarg() ]),
                         mx=Mean(lambda x: x-x),
                         my=Mean(lambda y: y-y),
@@ -67,19 +60,18 @@ def draw_MAP_background(objects = np.array([ Bivarg() ]),
     """
     from pymc.gp import point_eval
     from pyBA.distortion import compute_displacements
-    
+    from numpy import array, sqrt
+
     # Grid for regression
-    x,y = make_grid(objects,res=res)
+    x,y = make_grid(objectsA,res=res)
 
     # Perform evaluation of background function on grid
     xarr = np.array([x.flatten(),y.flatten()]).T
-    xout = point_eval(mx, Cx, xarr)
-    yout = point_eval(my, Cy, xarr)
-    vx = xout[0]
-    vy = yout[0]
+    vx, sx = point_eval(mx, Cx, xarr)
+    vy, sy = point_eval(my, Cy, xarr)
 
     # Compute empirical displacements
-    xobs, yobs, vxobs, vyobs = compute_displacements(objects, objectsB)
+    xobs, yobs, vxobs, vyobs = compute_displacements(objectsA, objectsB)
 
     # Matplotlib plotting
     fig = figure(figsize=(16,16))
@@ -87,6 +79,13 @@ def draw_MAP_background(objects = np.array([ Bivarg() ]),
     quiver(x,y,vx,vy,scale_units='width',scale=res*res)
     quiver(xobs,yobs,vxobs,vyobs,color='r',scale_units='width',scale=res*res)
     ax.autoscale(enable=None, axis='both', tight=True)
+
+    # Also plot error ellipses on interpolated points
+    ellipses = array([ Bivarg( mu = array([xarr[i,0] + vx[i], xarr[i,1] + vy[i]]),
+                               sigma = array([sqrt(sx[i]), sqrt(sy[i])]) )
+                       for i in range(len(xarr)) ])
+    draw_objects(ellipses, replot='yes')
+
     show()
 
     return
