@@ -2,7 +2,6 @@ import numpy as np
 from numpy import linspace, array, meshgrid, sqrt
 from pyBA.classes import Bgmap, Bivarg
 from numpy.linalg import norm
-#from pymc.gp import Mean, Covariance, Realization, matern, point_eval, observe
 
 def astrometry_cov(scale=100.,amp=1.):
     """ Define covariance function for gaussian process."""
@@ -68,7 +67,9 @@ def compute_displacements(objectsA = np.array([ Bivarg() ]),
     yobs = np.array([o.mu[1] for o in objectsA])
     vxobs = np.array([objectsB[i].mu[0] - objectsA[i].mu[0] for i in range(nobj) ])
     vyobs = np.array([objectsB[i].mu[1] - objectsA[i].mu[1] for i in range(nobj) ])
-    return xobs, yobs, vxobs, vyobs
+    sxobs = np.array([objectsB[i].sigma[0,0] + objectsA[i].sigma[0,0] for i in range(nobj) ])
+    syobs = np.array([objectsB[i].sigma[1,1] + objectsA[i].sigma[1,1] for i in range(nobj) ])
+    return xobs, yobs, vxobs, vyobs, sxobs, syobs
 
 def compute_residual(objectsA, objectsB, mx, my):
     """Compute residual between tie object displacements and 
@@ -100,7 +101,7 @@ def regression(objectsA, objectsB, M, C, direction='x'):
     from pymc.gp import observe
 
     # Compute displacements between frames for tie objects
-    xobs, yobs, vxobs, vyobs = compute_displacements(objectsA, objectsB)
+    xobs, yobs, vxobs, vyobs, sxobs, syobs = compute_displacements(objectsA, objectsB)
 
     obs = np.array([xobs.flatten(), yobs.flatten()]).T
 
@@ -109,33 +110,15 @@ def regression(objectsA, objectsB, M, C, direction='x'):
     # keyword controls which direction is being used.
     if direction is 'x':
         data = vxobs.flatten()
+        sig = sxobs.flatten()
     elif direction is 'y':
         data = vyobs.flatten()
+        sig = syobs.flatten()
        
     # Perform observation
     observe(M=M,C=C,
             obs_mesh = obs,
-            obs_vals = data)
+            obs_vals = data,
+            obs_V = sig)
 
-    return M,C
-
-def MAP_hyperparameters(M, C, objectsA, objectsB, direction='x'):
-    """Extremise the GP hyperparmaters based on the observed
-    displacements between image frames."""
-    
-    #from pyBA.plotting import compute_displacements
-
-    # Compute displacements between frames for tie objects
-    xobs, yobs, vxobs, vyobs = compute_displacements(objectsA, objectsB)
-
-    obs = np.array([xobs.flatten(), yobs.flatten()]).T
-
-    # Define residual displacement from mean function
-    dx, dy = compute_residual(objectsA, objectsB, M)
-    if direction is 'x':
-        data = dx
-    elif direction is 'y':
-        data = dy
-
-    # Define objective function
-    
+    return M,C    

@@ -71,7 +71,7 @@ def draw_MAP_background(objectsA = np.array([ Bivarg() ]),
     vy, sy = point_eval(my, Cy, xarr)
 
     # Compute empirical displacements
-    xobs, yobs, vxobs, vyobs = compute_displacements(objectsA, objectsB)
+    xobs, yobs, vxobs, vyobs, sxobs, syobs = compute_displacements(objectsA, objectsB)
 
     # Matplotlib plotting
     fig = figure(figsize=(16,16))
@@ -82,7 +82,7 @@ def draw_MAP_background(objectsA = np.array([ Bivarg() ]),
 
     # Also plot error ellipses on interpolated points
     ellipses = array([ Bivarg( mu = array([xarr[i,0] + vx[i], xarr[i,1] + vy[i]]),
-                               sigma = array([sqrt(sx[i]), sqrt(sy[i])]) )
+                               sigma = array([ sx[i], sy[i] ]) )
                        for i in range(len(xarr)) ])
     draw_objects(ellipses, replot='yes')
 
@@ -96,7 +96,7 @@ def draw_MAP_residuals(objectsA, objectsB, mx, my, scaled='no'):
     from numpy import array
     
     # Compute displacements between frames for tie objects
-    xobs, yobs, vxobs, vyobs = compute_displacements(objectsA, objectsB)
+    xobs, yobs, vxobs, vyobs, sxobs, syobs = compute_displacements(objectsA, objectsB)
 
     # Compute residual
     dx, dy = compute_residual(objectsA, objectsB, mx, my)
@@ -144,7 +144,7 @@ def draw_realisation(objectsA = np.array([ Bivarg() ]),
     vy = Ry(xarr)
 
     # Compute empirical displacements
-    xobs, yobs, vxobs, vyobs = compute_displacements(objectsA, objectsB)
+    xobs, yobs, vxobs, vyobs, sxobs, syobs = compute_displacements(objectsA, objectsB)
 
     # Matplotlib plotting
     fig = figure(figsize=(16,16))

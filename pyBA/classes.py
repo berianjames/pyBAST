@@ -286,7 +286,7 @@ class Dmap:
         P = self.P
 
         # Get coordinates of objects in first frame
-        xobs, yobs, _, _ = compute_displacements(A, B)
+        xobs, yobs, _, _, _, _ = compute_displacements(A, B)
         xyobs = np.array([xobs.flatten(), yobs.flatten()]).T
 
         # Get residuals to mean function
