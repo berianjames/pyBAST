@@ -11,7 +11,7 @@ def distance(M,N):
     db = (1./2.) * np.log( det(S) / np.sqrt( N.det*M.det ) )
     return da + db
 
-def suggest_prior(M,N):
+def suggest_mapping(M,N):
     """ Suggests a start point for the background mapping fitting between
     two sets of objects. Formally, this is bad, as the data are being used
     twice. However, the likelihood surface is generally (always?) unimodal

@@ -1,4 +1,4 @@
-# pyBA test using some data from A. A. Miller, Esq.
+# pyBA test using some data from Adam Miller
 import numpy as np
 import pyBA
 import timeit
@@ -10,11 +10,9 @@ nties = len(data)
 # Parse catalogues into object list
 t1 = timeit.time.time()
 objectsA = np.array( [ pyBA.Bivarg(mu=data[i,0:2],sigma=data[i,2:5]) for i in range(nties) ] )
+objectsB = np.array( [ pyBA.Bivarg(mu=data[i,5:7],sigma=data[i,7:10]) for i in range(nties) ] )
 t2 = timeit.time.time()
 print t2 - t1
-
-objectsB = np.array( [ pyBA.Bivarg(mu=data[i,5:7],sigma=data[i,7:10]) for i in range(nties) ] )
-#obj_diff = [ objectsA[i] - objectsB[i] for i in range(nties) ]
 
 # Select random subset of tie objects
 nsamp = 500
@@ -24,25 +22,20 @@ ix = np.random.permutation(nties)[:nsamp]
 # Find maximum likelihood background transformation
 from pyBA.background import distance
 t1 = timeit.time.time()
-S = pyBA.background.suggest_prior(objectsA,objectsB)
+S = pyBA.background.suggest_mapping(objectsA,objectsB)
 P = pyBA.background.MAP( objectsA[ix], objectsB[ix], mu0=S.mu, prior=pyBA.Bgmap(), norm_approx=True )
 t2 = timeit.time.time()
 print t2 - t1
 
 print P.mu
 
-# Gaussian process
-#from pyBA.distortion import astrometry_mean, astrometry_cov
-#mx,my = astrometry_mean(P)
-#Cx = astrometry_cov(scale = 100., amp = 1.)
-#Cy = astrometry_cov(scale = 100., amp = 1.)
-
 # Create distortion map object
 D = pyBA.Dmap(P,objectsA[ix], objectsB[ix])
 #D = pyBA.Dmap(P,objectsA, objectsB)
 
-nres = 30
+nres = 30 # Density of interpolation grid points
 
+## PRIOR TO OBSERVATION
 # Show mean function (the background transformation)
 #D.draw_background(res=nres)
 
@@ -52,6 +45,7 @@ nres = 30
 # Plot residuals
 #D.draw_residuals(res=nres)
 
+## OBSERVATION
 # Condition GP hyperparameters
 D.condition()
 
