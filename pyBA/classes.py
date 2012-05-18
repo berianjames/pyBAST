@@ -222,14 +222,15 @@ class Dmap:
         # Default GP hyperparameters
         self.scale = scale
         self.amp = amp
+        self.hyperparams = {'scale': self.scale, 'amp': self.amp}
 
         # Create gaussian process parts
         self.mx, self.my = astrometry_mean(P)
         #self.M =
 
         self.C = astrometry_cov(scale=self.scale,amp=self.amp)
-        self.cx = self.C
-        self.cy = self.C
+        self.cx = astrometry_cov(scale=self.scale,amp=self.amp)
+        self.cy = astrometry_cov(scale=self.scale,amp=self.amp)
 
         return 
 
@@ -265,11 +266,98 @@ class Dmap:
 
         return
 
-    #def observe(self) ???
-
     def condition(self):
         """ Conditions hyper-parameters of gaussian process.
         """
+
+        from pyBA.distortion import astrometry_cov, astrometry_mean
+        from pyBA.distortion import regression, compute_residual, compute_displacements
+        from pymc.gp.GPutils import trisolve
+        from scipy.optimize import fmin, fmin_bfgs
+
+        # Initial hyperparameter vector
+        HP0 = np.array([self.scale, self.amp])
+
+        # Store handles to objects lists and mean processes
+        A = self.A
+        B = self.B
+        mx = self.mx
+        my = self.my
+        P = self.P
+
+        # Get coordinates of objects in first frame
+        xobs, yobs, _, _ = compute_displacements(A, B)
+        xyobs = np.array([xobs.flatten(), yobs.flatten()]).T
+
+        # Get residuals to mean function
+        dx, dy = compute_residual(A, B, mx, my)
+
+        # Define loglikelihood function for gaussian process given data
+        def lnprob_cov(C,direction):
+            
+            # Observe trial gaussian process with data
+            #Mo,Co = regression(A, B, M, C, direction=direction)
+
+            # Handle to cholesky decomposition of trial covariance matrix
+            #Uo = Co.Uo # C(x,x) = Uo.T * Uo
+
+            # More efficient method to get Cholesky covariance matrix
+            Uo = C.cholesky(xyobs, apply_pivot=False)['U']
+            
+            # Get correct vector of residuals
+            if direction is 'x':
+                y = dx
+            elif direction is 'y':
+                y = dy
+
+            # Get first term of loglikelihood expression (y * (1/C) * y.T)
+            x1 = trisolve(Uo.T, y.T, uplo='L')
+            x2 = trisolve(Uo, x1, uplo='U')
+            L1 = y.dot(x2)
+
+            # Get second term of loglikelihood expression (2*pi log det C)
+            L2 = 2 * np.pi *  np.sum( 2*np.log(np.diag(Uo)) )
+
+            # Why am I always confused by this?
+            thing_to_be_minimised = L1 + L2
+
+            return thing_to_be_minimised
+
+        # Define loglikelihood function for hyperparameter vector
+        def lnprob(HP):
+            """ Returns the log probability (\propto -0.5*chi^2) of the
+            hyperparameter set HP for the Gaussian process.
+            """
+            
+            # Square parameters to ensure they are positive
+            HPpos = np.abs( HP ** 2 )
+
+            cx_try = astrometry_cov(*HPpos)
+            cy_try = astrometry_cov(*HPpos)
+
+            llik = lnprob_cov(cx_try,direction='x') + \
+                lnprob_cov(cy_try,direction='y')
+
+            #print HPpos, llik
+            return llik
+
+        # Perform optimisation
+        ML_HP = fmin(lnprob,HP0, xtol=1.0e-2, ftol=1.0e-6, disp=False)
+
+        # Reconstruct Dmap with conditioned hyperparameters
+        # New GP hyperparameters
+        self.scale = ML_HP[0]
+        self.amp = ML_HP[1]
+        self.hyperparams = {'scale': self.scale, 'amp': self.amp}
+
+        # New GP covariance
+        self.C = astrometry_cov(scale=self.scale,amp=self.amp)
+        self.cx = astrometry_cov(scale=self.scale,amp=self.amp)
+        self.cy = astrometry_cov(scale=self.scale,amp=self.amp)
+
+        # Lastly, condition the gaussian process on the observed data
+        self.mx, self.cx = regression(A, B, self.mx, self.cx, direction='x')
+        self.my, self.cy = regression(A, B, self.my, self.cy, direction='y')
         
-        return
+        return ML_HP, lnprob(ML_HP)
         

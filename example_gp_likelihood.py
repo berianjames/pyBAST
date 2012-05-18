@@ -17,7 +17,7 @@ objectsB = np.array( [ pyBA.Bivarg(mu=data[i,5:7],sigma=data[i,7:10]) for i in r
 #obj_diff = [ objectsA[i] - objectsB[i] for i in range(nties) ]
 
 # Select random subset of tie objects
-nsamp = 100
+nsamp = 500
 ix = np.random.permutation(nties)[:nsamp]
 #print ix
 
@@ -39,6 +39,7 @@ print P.mu
 
 # Create distortion map object
 D = pyBA.Dmap(P,objectsA[ix], objectsB[ix])
+#D = pyBA.Dmap(P,objectsA, objectsB)
 
 nres = 30
 
@@ -49,28 +50,14 @@ nres = 30
 #D.draw_realisation(res=nres)
 
 # Plot residuals
-D.draw_residuals(res=nres)
+#D.draw_residuals(res=nres)
 
 # Condition GP hyperparameters
-#D.condition()
+D.condition()
 
-# Observe gaussian processes
-#from pyBA.distortion import regression
-#mxo, Cxo = regression(objectsA[ix],
-#                      objectsB[ix],
-#                      mx, Cx, direction='x')
-
-#myo, Cyo = regression(objectsA[ix],
-#                      objectsB[ix],
-#                      my, Cy, direction='y')
+# Show mean function (the background transformation)
+D.draw_background(res=nres)
 
 # Draw realisation of distortion map after observation
-#from pyBA.plotting import draw_realisation
-#draw_realisation(objectsA[ix],
-#                 objectsB[ix],
-#                 mxo, myo, Cxo, Cyo,
-#                 res = nres)
+D.draw_realisation(res=nres)
 
-# Extremise GP hyperparameters
-#from pyBA.distortion import MAP_hyperparameters
-#cx_MAP = MAP_hyperparameters(M, C, objectsA, objectsB)

@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.linalg import solve, det, inv
+from numpy.linalg import solve, det, inv
 from pyBA.classes import Bgmap
 
 def distance(M,N):
