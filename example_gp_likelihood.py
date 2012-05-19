@@ -29,9 +29,9 @@ print t2 - t1
 
 print P.mu
 
-# Create distortion map object
-D = pyBA.Dmap(P,objectsA[ix], objectsB[ix])
-#D = pyBA.Dmap(P,objectsA, objectsB)
+# Create astrometric mapping object
+D = pyBA.Amap(P,objectsA[ix], objectsB[ix])
+#D = pyBA.Amap(P,objectsA, objectsB)
 
 nres = 30 # Density of interpolation grid points
 

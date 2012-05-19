@@ -201,8 +201,8 @@ class LittleBivarg(Bivarg):
         """
         return Bivarg(mu=self.mu,sigma=self.sigma)
 
-class Dmap:
-    """ Implements distortion map class for astrometry, a gaussian process.
+class Amap:
+    """ Implements astrometric mapping class as a gaussian process.
     """
 
     __author__ = "Berian James"
@@ -210,7 +210,7 @@ class Dmap:
     __email__ = "berian@berkeley.edu"
 
     def __init__(self,P,A,B,scale=100.0,amp=1.0):
-        """ Create instance of distortion map from a background mapping
+        """ Create instance of astrometric map from a background mapping
         (Bgmap object P) and objects in each frame (Bivarg arrays A and B).
         """
         from pyBA.distortion import astrometry_mean, astrometry_cov
@@ -270,10 +270,11 @@ class Dmap:
         """ Conditions hyper-parameters of gaussian process.
         """
 
-        from pyBA.distortion import astrometry_cov, astrometry_mean
-        from pyBA.distortion import regression, compute_residual, compute_displacements
-        from pymc.gp.GPutils import trisolve
-        from scipy.optimize import fmin, fmin_bfgs
+        from pyBA.distortion import astrometry_cov#, astrometry_mean
+        from pyBA.distortion import regression#, compute_residual, compute_displacements
+        from pyBA.distortion import optimise_HP
+        #from pymc.gp.GPutils import trisolve
+        #from scipy.optimize import fmin, fmin_bfgs
 
         # Initial hyperparameter vector
         HP0 = np.array([self.scale, self.amp])
@@ -283,66 +284,12 @@ class Dmap:
         B = self.B
         mx = self.mx
         my = self.my
-        P = self.P
+        #P = self.P
 
-        # Get coordinates of objects in first frame
-        xobs, yobs, _, _, _, _ = compute_displacements(A, B)
-        xyobs = np.array([xobs.flatten(), yobs.flatten()]).T
-
-        # Get residuals to mean function
-        dx, dy = compute_residual(A, B, mx, my)
-
-        # Define loglikelihood function for gaussian process given data
-        def lnprob_cov(C,direction):
-            
-            # Observe trial gaussian process with data
-            #Mo,Co = regression(A, B, M, C, direction=direction)
-
-            # Handle to cholesky decomposition of trial covariance matrix
-            #Uo = Co.Uo # C(x,x) = Uo.T * Uo
-
-            # More efficient method to get Cholesky covariance matrix
-            Uo = C.cholesky(xyobs, apply_pivot=False)['U']
-            
-            # Get correct vector of residuals
-            if direction is 'x':
-                y = dx
-            elif direction is 'y':
-                y = dy
-
-            # Get first term of loglikelihood expression (y * (1/C) * y.T)
-            x1 = trisolve(Uo.T, y.T, uplo='L')
-            x2 = trisolve(Uo, x1, uplo='U')
-            L1 = y.dot(x2)
-
-            # Get second term of loglikelihood expression (2*pi log det C)
-            L2 = 2 * np.pi *  np.sum( 2*np.log(np.diag(Uo)) )
-
-            # Why am I always confused by this?
-            thing_to_be_minimised = L1 + L2
-
-            return thing_to_be_minimised
-
-        # Define loglikelihood function for hyperparameter vector
-        def lnprob(HP):
-            """ Returns the log probability (\propto -0.5*chi^2) of the
-            hyperparameter set HP for the Gaussian process.
-            """
-            
-            # Square parameters to ensure they are positive
-            HPpos = np.abs( HP ** 2 )
-
-            cx_try = astrometry_cov(*HPpos)
-            cy_try = astrometry_cov(*HPpos)
-
-            llik = lnprob_cov(cx_try,direction='x') + \
-                lnprob_cov(cy_try,direction='y')
-
-            #print HPpos, llik
-            return llik
-
-        # Perform optimisation
-        ML_HP = fmin(lnprob,HP0, xtol=1.0e-2, ftol=1.0e-6, disp=False)
+        # Optimise hyperparameters
+        ML_output = optimise_HP(A, B, mx, my, HP0)
+        ML_HP = ML_output[0]
+        ML_lnprob = ML_output[1]
 
         # Reconstruct Dmap with conditioned hyperparameters
         # New GP hyperparameters
@@ -359,5 +306,5 @@ class Dmap:
         self.mx, self.cx = regression(A, B, self.mx, self.cx, direction='x')
         self.my, self.cy = regression(A, B, self.my, self.cy, direction='y')
         
-        return ML_HP, lnprob(ML_HP)
+        return ML_HP, ML_lnprob
         

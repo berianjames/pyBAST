@@ -121,4 +121,71 @@ def regression(objectsA, objectsB, M, C, direction='x'):
             obs_vals = data,
             obs_V = sig)
 
-    return M,C    
+    return M,C  
+
+def optimise_HP(A, B, mx, my, HP0):
+    """ Condition hyperparameters of gaussian process associated 
+    with astrometric mapping, based on observed data.
+    """
+
+    from pymc.gp.GPutils import trisolve
+    from scipy.optimize import fmin, fmin_bfgs
+
+    # Get coordinates of objects in first frame
+    xobs, yobs, _, _, _, _ = compute_displacements(A, B)
+    xyobs = np.array([xobs.flatten(), yobs.flatten()]).T
+
+    # Get residuals to mean function
+    dx, dy = compute_residual(A, B, mx, my)
+    
+    # Define loglikelihood function for gaussian process given data
+    def lnprob_cov(C,direction):
+        
+        # Handle to cholesky decomposition of trial covariance matrix
+        #Uo = Co.Uo # C(x,x) = Uo.T * Uo
+
+        # More efficient method to get Cholesky covariance matrix
+        Uo = C.cholesky(xyobs, apply_pivot=False)['U']
+        
+        # Get correct vector of residuals
+        if direction is 'x':
+            y = dx
+        elif direction is 'y':
+            y = dy
+
+        # Get first term of loglikelihood expression (y * (1/C) * y.T)
+        x1 = trisolve(Uo.T, y.T, uplo='L')
+        x2 = trisolve(Uo, x1, uplo='U')
+        L1 = y.dot(x2)
+
+        # Get second term of loglikelihood expression (2*pi log det C)
+        L2 = 2 * np.pi *  np.sum( 2*np.log(np.diag(Uo)) )
+
+        # Why am I always confused by this?
+        thing_to_be_minimised = L1 + L2
+
+        return thing_to_be_minimised
+
+    # Define loglikelihood function for hyperparameter vector
+    def lnprob_HP(HP):
+        """ Returns the log probability (\propto -0.5*chi^2) of the
+        hyperparameter set HP for the Gaussian process.
+        """
+            
+        # Square parameters to ensure they are positive
+        HPpos = np.abs( HP ** 2 )
+
+        cx_try = astrometry_cov(*HPpos)
+        cy_try = astrometry_cov(*HPpos)
+        
+        llik = lnprob_cov(cx_try,direction='x') + \
+            lnprob_cov(cy_try,direction='y')
+
+        #print HPpos, llik
+        return llik
+
+    # Perform optimisation
+    ML_HP = fmin(lnprob_HP,HP0, xtol=1.0e-2, ftol=1.0e-6, disp=False)
+
+    return ML_HP, lnprob_HP(ML_HP)
+    
