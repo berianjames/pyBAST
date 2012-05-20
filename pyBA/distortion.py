@@ -12,6 +12,17 @@ def astrometry_cov(scale=100.,amp=1.):
 
     return C
 
+def astrometry_d2(scale=100., amp=1.):
+    """ Return function yielding squared Euclidean 
+    distance between points."""
+    
+    from scipy.spatial.distance import cdist
+
+    def eval_d2(x, y):
+        return cdist(x, y, 'sqeuclidean')
+
+    return eval_d2
+
 def astrometry_mean(T=Bgmap()):
     """ Defines the mean functions for the gaussian process
     astrometric solution."""

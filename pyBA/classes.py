@@ -270,11 +270,9 @@ class Amap:
         """ Conditions hyper-parameters of gaussian process.
         """
 
-        from pyBA.distortion import astrometry_cov#, astrometry_mean
-        from pyBA.distortion import regression#, compute_residual, compute_displacements
+        from pyBA.distortion import astrometry_cov
+        from pyBA.distortion import regression
         from pyBA.distortion import optimise_HP
-        #from pymc.gp.GPutils import trisolve
-        #from scipy.optimize import fmin, fmin_bfgs
 
         # Initial hyperparameter vector
         HP0 = np.array([self.scale, self.amp])
@@ -284,7 +282,6 @@ class Amap:
         B = self.B
         mx = self.mx
         my = self.my
-        #P = self.P
 
         # Optimise hyperparameters
         ML_output = optimise_HP(A, B, mx, my, HP0)
