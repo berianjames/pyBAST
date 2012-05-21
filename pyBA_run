@@ -1,0 +1,102 @@
+#!/usr/bin/env python
+
+"""Python script to perform probabilistic astrometry on 
+input data set, outputting a mapping object from pyBA that
+can be used for regression between image frames."""
+
+import argparse
+import sys, os, pickle
+
+## COMMAND LINE PARSING
+# Set up top-level command line parser
+parser = argparse.ArgumentParser(description='Perform probabilistic astrometry with pyBA.')
+subparsers = parser.add_subparsers(help="pyBA command option: should be 'fit', 'summary' or 'apply'",
+                                   dest="pyBA_command")
+
+# create the parser for the "fit" command
+parser_fit = subparsers.add_parser('fit', help='determine astrometric mapping solution', 
+                                   description='Determine astrometric mapping solution')
+parser_fit.add_argument('-s', '--subsample', type=int, metavar='N',
+                        help='Use only N random objects from data set')
+parser_fit.add_argument('file', type=str, help='Path to input data file')
+parser_fit.add_argument('output', type=str, help='Optional[=file.pyBA] path to save output pyBA solution.',
+                        default = argparse.SUPPRESS, nargs='?')
+
+# create the parser for the "summary" command
+parser_summary = subparsers.add_parser('summary', help='summarize astrometric mapping solution',
+                                       description='Summarize astrometric mapping solution')
+parser_summary.add_argument('-p', action='store_true', help='Plot astrometric map on grid.')
+parser_summary.add_argument('file', type=str, help='Path to astrometric mapping file')
+
+# create the parser for the "apply" command
+parser_apply = subparsers.add_parser('apply', help='apply astrometric mapping solution at new locations')
+
+args = parser.parse_args()
+
+## FITTING ROUTINE
+if args.pyBA_command == 'fit':
+
+    # Check if input file exists
+    if not os.path.exists(args.file):
+        sys.exit('ERROR: Data file %s was not found!' % args.file)
+
+    # Default to '<input filename base>.pyBA' for output file name
+    if 'output' not in args.__dict__:
+        args.output = args.file.split('.')[0] + '.pyBA'
+
+    # Try loading file
+    import numpy as np
+    try:
+        data = np.loadtxt(args.file)
+        nties = len(data)
+    except:
+        sys.exit("ERROR: Data file %s doesn't look like data!" % args.file)
+
+    # Load Bayesian astrometry package
+    #  --- takes longer than it should because of pymc.
+    import pyBA
+
+    # Parse catalogues into object list
+    try:
+        objectsA = np.array( [ pyBA.Bivarg(mu=data[i,0:2],sigma=data[i,2:5]) for i in range(nties) ] )
+        objectsB = np.array( [ pyBA.Bivarg(mu=data[i,5:7],sigma=data[i,7:10]) for i in range(nties) ] )
+    except:
+        sys.exit("ERROR: Couldn't parse data into objects!")
+
+    # Subsample data set
+    if args.subsample != None:
+        ix = np.random.permutation(nties)[:args.subsample]
+        objectsA = objectsA[ix]
+        objectsB = objectsB[ix]
+
+        nties = args.subsample
+        print 'Using {} data objects'.format(nties)
+        
+    # Find maximum likelihood background transformation
+    from pyBA.background import distance
+    S = pyBA.background.suggest_mapping(objectsA,objectsB)
+    #P = pyBA.background.MAP( objectsA, objectsB, mu0=S.mu, prior=pyBA.Bgmap(), norm_approx=True )
+
+    #print P.mu
+    P = pyBA.Bgmap()
+
+    # Create astrometric mapping object
+    D = pyBA.Amap(P,objectsA, objectsB)
+
+    # Condition astrometric mapping
+    #D.condition()
+
+    # Write conditioned astrometric map to file
+    output = open(args.output, 'wb')
+    pickle.dump(D, output)
+    output.close()
+
+## SUMMARIZE ROUTINE
+elif args.pyBA_command == 'summary':
+    pass
+
+## APPLY ROUTINE
+elif args.pyBA_command == 'apply':
+    pass
+
+exit()
