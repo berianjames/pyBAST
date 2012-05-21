@@ -23,10 +23,31 @@ def astrometry_d2(scale=100., amp=1.):
 
     return eval_d2
 
-def astrometry_mean(T=Bgmap()):
-    """ Defines the mean functions for the gaussian process
-    astrometric solution."""
-    from pymc.gp import Mean
+def mx(x, T=Bgmap()):
+    """ Takes n x 2 array of coordinates and provides x-
+    component of their transformation."""
+    
+    # Prep inputs
+    dmu = T.mu[0:2]
+    theta = T.mu[2]
+    d0 = T.mu[3:5]
+    L = T.mu[5:7]
+    
+    U = np.squeeze(np.array([ [np.cos(theta),-np.sin(theta)],
+                              [np.sin(theta), np.cos(theta)] ]))
+        
+    # Make use of broadcasting
+    p = L*x + dmu - d0
+
+    # But rotation must be done component-wise
+    rx = U[0,0]*p[:,0] + U[0,1]*p[:,1]
+
+    # Return x-displacement from original value
+    return x[:,0] - rx + d0[0]
+
+def my(x, T=Bgmap()):
+    """ Takes n x 2 array of coordinates and provides y-
+    component of their transformation."""
 
     # Prep inputs
     dmu = T.mu[0:2]
@@ -36,34 +57,22 @@ def astrometry_mean(T=Bgmap()):
     
     U = np.squeeze(np.array([ [np.cos(theta),-np.sin(theta)],
                               [np.sin(theta), np.cos(theta)] ]))
-
-    def mx(x):
-        """ Takes n x 2 array of coordinates and provides x-
-        component of their transformation."""
         
-        # Make use of broadcasting
-        p = L*x + dmu - d0
+    # Make use of broadcasting
+    p = L*x + dmu - d0
 
-        # But rotation must be done component-wise
-        rx = U[0,0]*p[:,0] + U[0,1]*p[:,1]
+    # But rotation must be done component-wise
+    ry = U[1,0]*p[:,0] + U[1,1]*p[:,1]
 
-        # Return x-displacement from original value
-        return x[:,0] - rx + d0[0]
+    # Return y-displacement from original value
+    return x[:,1] - ry + d0[1]
 
-    def my(x):
-        """ Takes n x 2 array of coordinates and provides y-
-        component of their transformation."""
-        
-        # Make use of broadcasting
-        p = L*x + dmu - d0
+def astrometry_mean(T=Bgmap()):
+    """ Defines the mean functions for the gaussian process
+    astrometric solution."""
+    from pymc.gp import Mean
 
-        # But rotation must be done component-wise
-        ry = U[1,0]*p[:,0] + U[1,1]*p[:,1]
-
-        # Return y-displacement from original value
-        return x[:,1] - ry + d0[1]
-
-    return Mean(mx), Mean(my)
+    return Mean(mx,T=T), Mean(my,T=T)
 
 def compute_displacements(objectsA = np.array([ Bivarg() ]),
                           objectsB = np.array([ Bivarg() ])):

@@ -25,7 +25,7 @@ parser_fit.add_argument('output', type=str, help='Optional[=file.pyBA] path to s
 # create the parser for the "summary" command
 parser_summary = subparsers.add_parser('summary', help='summarize astrometric mapping solution',
                                        description='Summarize astrometric mapping solution')
-parser_summary.add_argument('-p', action='store_true', help='Plot astrometric map on grid.')
+parser_summary.add_argument('-p', '--plot', action='store_true', help='Plot astrometric map on grid.')
 parser_summary.add_argument('file', type=str, help='Path to astrometric mapping file')
 
 # create the parser for the "apply" command
@@ -75,20 +75,23 @@ if args.pyBA_command == 'fit':
     # Find maximum likelihood background transformation
     from pyBA.background import distance
     S = pyBA.background.suggest_mapping(objectsA,objectsB)
-    #P = pyBA.background.MAP( objectsA, objectsB, mu0=S.mu, prior=pyBA.Bgmap(), norm_approx=True )
+    P = pyBA.background.MAP( objectsA, objectsB, mu0=S.mu, prior=pyBA.Bgmap(), norm_approx=True )
 
-    #print P.mu
-    P = pyBA.Bgmap()
+    print P.mu
+    #P = pyBA.Bgmap()
 
     # Create astrometric mapping object
     D = pyBA.Amap(P,objectsA, objectsB)
 
     # Condition astrometric mapping
-    #D.condition()
+    D.condition()
+
+    print D.hyperparams
 
     # Write conditioned astrometric map to file
-    output = open(args.output, 'wb')
-    pickle.dump(D, output)
+    output = open(args.output, 'w')
+    pickle.dump(D, output, protocol=-1)
+    #pickle.dumps(D)
     output.close()
 
 ## SUMMARIZE ROUTINE
