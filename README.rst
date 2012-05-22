@@ -180,5 +180,4 @@ Exporting astrometric solutions
 Thanks
 ======
 
-This work was funded by NSF grant #...
-The following people contributed: ...
+This work was funded by NSF grant #0941742. The following people contributed to the development of this package: Josh Bloom, Adam Miller.
