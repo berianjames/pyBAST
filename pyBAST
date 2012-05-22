@@ -198,17 +198,22 @@ elif args.pyBA_command == 'apply':
     # Else run 
     else:
         # If no batchfile or grid, then evaluate a single point
-        from pymc.gp import point_eval
+        from pymc.gp import Realization
         import numpy as np
 
         print D.hyperparams
+        
+        Rx = Realization(D.mx, D.cx)
+        Ry = Realization(D.my, D.cy)
 
         xarr = np.array([ args.xy, [0.0, 0.0] ])
-        dx, sx = point_eval(D.mx, D.cx, xarr)
-        dy, sy = point_eval(D.my, D.cy, xarr)
+        dx = Rx(xarr)
+        dy = Ry(xarr)
 
+        #print dx, dy
+        #print sx, sy
         xymap = np.array([ args.xy ]) + np.array([ dx[0], dy[0] ])
         print xymap.flatten()
-        print sx[0], sy[0]
+        #print sx[0], sy[0]
 
 exit()
