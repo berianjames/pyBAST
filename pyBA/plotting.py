@@ -2,7 +2,6 @@ from pylab import plot, show, quiver, figure, gca
 from matplotlib.patches import Ellipse
 import numpy as np
 from pyBA.classes import Bivarg, Bgmap
-from pymc.gp import Mean, Covariance, matern
 
 def draw_objects(objects=np.array( [Bivarg()] ), replot='no'):
     ells = [Ellipse(xy=O.mu, width=O.sigma[0,0],
@@ -49,26 +48,23 @@ def make_grid(objects = np.array([ Bivarg() ]), res=30):
 
 def draw_MAP_background(objectsA = np.array([ Bivarg() ]),
                         objectsB = np.array([ Bivarg() ]),
-                        mx=Mean(lambda x: x-x),
-                        my=Mean(lambda y: y-y),
-                        Cx=Covariance(eval_fun=matern.euclidean, diff_degree=1.4, amp = .4, scale = .1),
-                        Cy=Covariance(eval_fun=matern.euclidean, diff_degree=1.4, amp = .4, scale = .1),
+                        P = Bgmap(),
                         res = 30):
     """ Plot the background parametric mapping between frames (the mean function
     for the gaussian process) on a grid of given resolution. Overplot observed
     displacements from lists of tie objects.
     """
-    from pymc.gp import point_eval
-    from pyBA.distortion import compute_displacements
+
+    from pyBA.distortion import compute_displacements, astrometry_mean
     from numpy import array, sqrt
 
     # Grid for regression
     x,y = make_grid(objectsA,res=res)
 
     # Perform evaluation of background function on grid
-    xarr = np.array([x.flatten(),y.flatten()]).T
-    vx, sx = point_eval(mx, Cx, xarr)
-    vy, sy = point_eval(my, Cy, xarr)
+    xy = np.array([x.flatten(),y.flatten()]).T
+    vxy = astrometry_mean(xy, P)
+    vx, vy = vxy[:,0], vxy[:,1]
 
     # Compute empirical displacements
     xobs, yobs, vxobs, vyobs, sxobs, syobs = compute_displacements(objectsA, objectsB)
@@ -81,25 +77,24 @@ def draw_MAP_background(objectsA = np.array([ Bivarg() ]),
     ax.autoscale(enable=None, axis='both', tight=True)
 
     # Also plot error ellipses on interpolated points
-    ellipses = array([ Bivarg( mu = array([xarr[i,0] + vx[i], xarr[i,1] + vy[i]]),
-                               sigma = array([ sx[i], sy[i] ]) )
-                       for i in range(len(xarr)) ])
-    draw_objects(ellipses, replot='yes')
+    #ellipses = array([ Bivarg( mu = array([xarr[i,0] + vx[i], xarr[i,1] + vy[i]]),
+    #                           sigma = array([ sx[i], sy[i] ]) )
+    #                   for i in range(len(xarr)) ])
+    #draw_objects(ellipses, replot='yes')
 
     show()
 
     return
 
-def draw_MAP_residuals(objectsA, objectsB, mx, my, scaled='no'):
+def draw_MAP_residuals(objectsA, objectsB, P, scaled='no'):
     from pyBA.distortion import compute_displacements, compute_residual
-    from pymc.gp import point_eval
     from numpy import array
     
     # Compute displacements between frames for tie objects
     xobs, yobs, vxobs, vyobs, sxobs, syobs = compute_displacements(objectsA, objectsB)
 
     # Compute residual
-    dx, dy = compute_residual(objectsA, objectsB, mx, my)
+    dx, dy = compute_residual(objectsA, objectsB, P)
 
     # Draw residuals
     fig = figure(figsize=(16,16))
@@ -123,28 +118,57 @@ def draw_MAP_residuals(objectsA, objectsB, mx, my, scaled='no'):
 
 def draw_realisation(objectsA = np.array([ Bivarg() ]),
                      objectsB = np.array([ Bivarg() ]),
-                     mx=Mean(lambda x: x-x),
-                     my=Mean(lambda y: y-y),
-                     Cx=Covariance(eval_fun=matern.euclidean, diff_degree=1.4, amp = .4, scale = .1),
-                     Cy=Covariance(eval_fun=matern.euclidean, diff_degree=1.4, amp = .4, scale = .1), 
-                     res = 30):
-    from pymc.gp import Realization, point_eval
-    from pyBA.distortion import compute_displacements
+                     P = Bgmap(), scale=100., amp= 1.,
+                     chol = None, res = 30):
+
+    from pyBA.distortion import compute_displacements, d2, compute_residual
+    from pyBA.distortion import astrometry_cov, astrometry_mean
 
     # Grid for regression
     x,y = make_grid(objectsA,res=res)
-
-    # Draw realisation of gaussian process x- and y-components
-    Rx = Realization(mx, Cx)
-    Ry = Realization(my, Cy)
-
-    # Evaluate gaussian processes on grid
-    xarr = np.array([x.flatten(),y.flatten()]).T
-    vx = Rx(xarr)
-    vy = Ry(xarr)
+    xyarr = np.array([x.flatten(),y.flatten()]).T
 
     # Compute empirical displacements
-    xobs, yobs, vxobs, vyobs, sxobs, syobs = compute_displacements(objectsA, objectsB)
+    xobs, yobs, vxobs, vyobs, _, _ = compute_displacements(objectsA, objectsB)
+    xyobs = np.array([xobs.flatten(),yobs.flatten()]).T
+
+    # Compute mean function
+    v = astrometry_mean(xyarr, P)
+
+    # If no cholesky matrix A provided, assume that we are
+    #  drawing realisation on grid without using observed data
+    if chol == None:
+
+        # Compute covariance matrix on grid
+        d2_grid = d2(xyarr,xyarr)
+        C = astrometry_cov(d2_grid, scale, amp)
+
+        # Perform cholesky decomposition
+        from numpy.linalg import cholesky
+        A = cholesky(C)
+
+        # Compute realisation on grid
+        from numpy.random import standard_normal
+        v += A.dot(standard_normal(xyarr.shape))
+
+    # Otherwise, use cholesky data to perform regression
+    else:
+
+        # Compute covariance matrix between meshes
+        d2_grid = d2(xyarr,xyobs)
+        C = astrometry_cov(d2_grid, scale, amp)
+
+        # Get residuals to mean function
+        from scipy.linalg import cho_solve
+        dx, dy = compute_residual(objectsA, objectsB, P)
+
+        vx = C.dot(cho_solve(chol, dx))
+        vy = C.dot(cho_solve(chol, dy))
+
+        v += np.array([vx, vy]).T
+
+    # Break into components for plotting
+    vx, vy = v[:,0], v[:,1]
 
     # Matplotlib plotting
     fig = figure(figsize=(16,16))

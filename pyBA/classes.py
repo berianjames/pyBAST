@@ -1,15 +1,6 @@
-# classes.py
-"""Provides classes for pyBA
-
-"""
-# Author:            Berian James (UCB)
-# Written:            1-Oct-2011
-# Modified:          27-Oct-2011  added det, chol and trace to __init__ in Bivarg
-#                    02-Mar-2012  created Bgmap class
-#                    05-Mar-2012  added overloading __add__ and __sub__, sigma handling for Bivarg
+"""Provides classes for pyBA. """
 
 import numpy as np
-#import numexpr as ne
 from numpy.linalg import solve, det, cholesky, eig
 
 class Bgmap:
@@ -209,11 +200,11 @@ class Amap:
     __version__ = "0.2"
     __email__ = "berian@berkeley.edu"
 
-    def __init__(self,P,A,B,scale=100.0,amp=1.0):
+    def __init__(self,P,A,B,scale=100.0,amp=2.0):
         """ Create instance of astrometric map from a background mapping
         (Bgmap object P) and objects in each frame (Bivarg arrays A and B).
         """
-        from pyBA.distortion import astrometry_mean, astrometry_cov
+        from pyBA.distortion import astrometry_mean, astrometry_cov, d2
 
         self.P = P
         self.A = A
@@ -224,13 +215,13 @@ class Amap:
         self.amp = amp
         self.hyperparams = {'scale': self.scale, 'amp': self.amp}
 
-        # Create gaussian process parts
-        self.mx, self.my = astrometry_mean(P)
-        #self.M =
+        # Define covariance matrix for data points
+        xyarr = np.array([o.mu for o in self.A])
+        self.d2 = d2(xyarr,xyarr)
+        self.C = astrometry_cov(self.d2, self.scale, self.amp)
 
-        self.C = astrometry_cov(scale=self.scale,amp=self.amp)
-        self.cx = astrometry_cov(scale=self.scale,amp=self.amp)
-        self.cy = astrometry_cov(scale=self.scale,amp=self.amp)
+        # Don't compute cholesky decomposition of C until needed
+        self.chol = None
 
         return 
 
@@ -239,9 +230,7 @@ class Amap:
         on grid of given resolution."""
 
         from pyBA.plotting import draw_MAP_background
-        draw_MAP_background(self.A, self.B,
-                            self.mx, self.my, self.cx, self.cy,
-                            res = res )
+        draw_MAP_background(self.A, self.B, self.P, res = res )
         return
 
     def draw_realisation(self, res=30):
@@ -249,10 +238,18 @@ class Amap:
         plot it on grid of given resolution."""
 
         from pyBA.plotting import draw_realisation
-        draw_realisation(self.A, self.B,
-                         self.mx, self.my, self.cx, self.cy,
-                         res = res)
 
+        # If GP is not conditioned (as checked by self.chol not yet computed),
+        #  draw realisation without using input data
+        if self.chol == None:
+            draw_realisation(self.A, self.B, self.P, self.scale, 
+                             self.amp, chol=self.chol, res= res)
+
+        # Otherwise, perform regression on observed data
+        else:
+            draw_realisation(self.A, self.B, self.P, self.scale, 
+                             self.amp, chol=self.chol, res= res)
+            
         return
 
     def draw_residuals(self, res=30, scaled='no'):
@@ -260,18 +257,14 @@ class Amap:
         from background mapping."""
 
         from pyBA.plotting import draw_MAP_residuals
-        draw_MAP_residuals(self.A, self.B, 
-                           self.mx, self.my, 
-                           scaled=scaled)
-
+        draw_MAP_residuals(self.A, self.B, self.P, scaled=scaled)
         return
 
     def condition(self):
         """ Conditions hyper-parameters of gaussian process.
         """
 
-        from pyBA.distortion import astrometry_cov
-        from pyBA.distortion import regression
+        from pyBA.distortion import astrometry_cov, d2
         from pyBA.distortion import optimise_HP
 
         # Initial hyperparameter vector
@@ -280,11 +273,10 @@ class Amap:
         # Store handles to objects lists and mean processes
         A = self.A
         B = self.B
-        mx = self.mx
-        my = self.my
+        P = self.P
 
         # Optimise hyperparameters
-        ML_output = optimise_HP(A, B, mx, my, HP0)
+        ML_output = optimise_HP(A, B, P, HP0)
         ML_HP = ML_output[0]
         ML_lnprob = ML_output[1]
 
@@ -294,14 +286,14 @@ class Amap:
         self.amp = ML_HP[1]
         self.hyperparams = {'scale': self.scale, 'amp': self.amp}
 
-        # New GP covariance
-        self.C = astrometry_cov(scale=self.scale,amp=self.amp)
-        self.cx = astrometry_cov(scale=self.scale,amp=self.amp)
-        self.cy = astrometry_cov(scale=self.scale,amp=self.amp)
+        # Define covariance matrix for data points
+        xyarr = np.array([o.mu for o in A])
+        self.d2 = d2(xyarr,xyarr)
+        self.C = astrometry_cov(self.d2, self.scale, self.amp)
 
-        # Lastly, condition the gaussian process on the observed data
-        self.mx, self.cx = regression(A, B, self.mx, self.cx, direction='x')
-        self.my, self.cy = regression(A, B, self.my, self.cy, direction='y')
+        # Compute cholesky decomposition of C with optimised parameters
+        from scipy.linalg import cho_factor
+        self.chol = cho_factor(self.C)
         
         return ML_HP, ML_lnprob
         

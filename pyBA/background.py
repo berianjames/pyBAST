@@ -55,7 +55,7 @@ def MAP(M,N,mu0=Bgmap().mu,prior=Bgmap(),norm_approx=True):
     multivariate normal distribution and reports back the mean and
     covariance matrix for the distribution.
     """
-    from scipy.optimize import fmin_bfgs
+    from scipy.optimize import fmin_bfgs, fmin
 
     def lnprob(P,M=M,N=N,prior=prior):
         """ Returns the log probability (\propto -0.5*chi^2) of the
@@ -67,8 +67,8 @@ def MAP(M,N,mu0=Bgmap().mu,prior=Bgmap(),norm_approx=True):
 
         return llik + prior.llik(P)
 
-    ML = fmin_bfgs( lnprob,mu0,args=(M,N,prior),callback=None,
-                    gtol=0.1,disp=False, maxiter=100)
+    ML = fmin( lnprob,mu0,args=(M,N,prior),callback=None,
+               xtol=1.0e-2, ftol=1.0e-6, disp=False, maxiter=150)
 
     if norm_approx is False:
         return Bgmap(mu=ML)

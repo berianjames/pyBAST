@@ -23,9 +23,11 @@ ix = np.random.permutation(nties)[:nsamp]
 from pyBA.background import distance
 t1 = timeit.time.time()
 S = pyBA.background.suggest_mapping(objectsA,objectsB)
+print S.mu
 P = pyBA.background.MAP( objectsA[ix], objectsB[ix], mu0=S.mu, prior=pyBA.Bgmap(), norm_approx=True )
 t2 = timeit.time.time()
 print t2 - t1
+
 
 print P.mu
 
@@ -40,7 +42,7 @@ nres = 30 # Density of interpolation grid points
 #D.draw_background(res=nres)
 
 # Draw realisation of distortion map prior to observation
-#D.draw_realisation(res=nres)
+D.draw_realisation(res=nres)
 
 # Plot residuals
 #D.draw_residuals(res=nres)
@@ -49,8 +51,10 @@ nres = 30 # Density of interpolation grid points
 # Condition GP hyperparameters
 D.condition()
 
+print D.hyperparams
+
 # Show mean function (the background transformation)
-D.draw_background(res=nres)
+#D.draw_background(res=nres)
 
 # Draw realisation of distortion map after observation
 D.draw_realisation(res=nres)
