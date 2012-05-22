@@ -133,7 +133,7 @@ targets, respectively.
 
 The rest of this README provides a short overview of the
 package. Detailed instructions will be provided in the
-documentation (by version 0.3).
+documentation (by version 0.4).
 
 Representation of astronomical objects
 ======================================
