@@ -4,7 +4,7 @@
 
 :Date: May 22, 2012
 :Version: 0.3
-:Authors: Berian James
+:Authors: Berian James, Josh Bloom
 :Web site: https://github.com/berianjames/pyBAST
 :Copyright: This document has been placed in the public domain.
 :License: This code is released under the MIT license.
@@ -44,7 +44,7 @@ Typical interactive use might look like::
     # Plot regression onto regular grid
     >>> D.draw_realisation(res=nres)
 
-This functionality is provided in an example script (pyBAST_example.py) and also, with detailed comments, in an iPython note (``pyBAST_example.ipynb``; also in ``pyBAST_example.pdf``).
+This functionality is provided in an example script (pyBAST_example.py) and also, with detailed comments, in an iPython notebook (``pyBAST_example.ipynb``; also in ``pyBAST_example.pdf``).
 
 For non-interactive use, a command utility ``pyBAST`` is provided::
 
@@ -63,7 +63,7 @@ For non-interactive use, a command utility ``pyBAST`` is provided::
     optional arguments:
       -h, --help           show this help message and exit
 
-This provides the functionality to fit an astrometric solution (which is written compactly to disk), summarise that solution and then apply it to arbitrary locations::
+This provides the functionality to fit an astrometric solution (which is written compactly to disk), summarize that solution and then apply it to arbitrary locations::
 
     > ./pyBAST fit -h
     usage: pyBAST fit [-h] [-s N] [-r n] file [output]
@@ -180,4 +180,4 @@ Exporting astrometric solutions
 Thanks
 ======
 
-This work was funded by NSF grant #0941742. The following people contributed to the development of this package: Josh Bloom, Adam Miller.
+This work was funded by NSF grant #0941742. The following people contributed to the development of this package: Adam Miller, Henrik Brink, Joey Richards, Dan Starr.
