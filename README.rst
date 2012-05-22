@@ -15,7 +15,7 @@ pyBAST: Bayesian Astrometry
 
 pyBAST is a Python implementation of the Bayesian Astrometry 
 framework. It provides a module for handling probability
-distribution that represent astronomical objects and for 
+distributions that represent astronomical objects and for 
 analysing the changes to these distributions between images.
 
 Typical interactive use might look like::
@@ -25,8 +25,8 @@ Typical interactive use might look like::
     >>> nties = len(data)
 
     # Load array data into objects
-    >>> objectsA = np.array( [ pyBA.Bivarg(mu=data[i,0:2],sigma=data[i,2:5]) for i in range(nties) ] )
-    >>>	objectsB = np.array( [ pyBA.Bivarg(mu=data[i,5:7],sigma=data[i,7:10]) for i in range(nties) ] )
+    >>> objectsA = np.array([pyBA.Bivarg(mu=data[i,0:2], sigma=data[i,2:5]) for i in range(nties)])
+    >>>	objectsB = np.array([pyBA.Bivarg(mu=data[i,5:7], sigma=data[i,7:10]) for i in range(nties)])
 
     # Select random subset of objects (speeds up testing)
     >>> nsamp = 100
@@ -35,7 +35,7 @@ Typical interactive use might look like::
     # Compute background mapping
     >>> from pyBA.background import distance
     >>> S = pyBA.background.suggest_mapping(objectsA,objectsB)
-    >>> P = pyBA.background.MAP( objectsA[ix], objectsB[ix], mu0=S.mu, prior=pyBA.Bgmap(), norm_approx=True )
+    >>> P = pyBA.background.MAP(objectsA[ix], objectsB[ix], mu0=S.mu, prior=pyBA.Bgmap(), norm_approx=True)
 
     # Create astrometric mapping and condition the local distortions
     >>> D = pyBA.Amap(P,objectsA[ix], objectsB[ix])
@@ -44,7 +44,7 @@ Typical interactive use might look like::
     # Plot regression onto regular grid
     >>> D.draw_realisation(res=nres)
 
-This functionality is provided in an example script (pyBAST_example.py) and also, with detailed comments, in an iPython note (pyBAST_example.ipynb; also in pyBAST_example.pdf).
+This functionality is provided in an example script (pyBAST_example.py) and also, with detailed comments, in an iPython note (``pyBAST_example.ipynb``; also in ``pyBAST_example.pdf``).
 
 For non-interactive use, a command utility ``pyBAST`` is provided::
 
