@@ -1,0 +1,177 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>pyBAST by berianjames</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="javascripts/scale.fix.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>pyBAST</h1>
+        <p>Python implementation of Bayesian Astrometry framework</p>
+        <p class="view"><a href="https://github.com/berianjames/pyBAST">View the Project on GitHub <small>berianjames/pyBAST</small></a></p>
+        <ul>
+          <li><a href="https://github.com/berianjames/pyBAST/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/berianjames/pyBAST/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/berianjames/pyBAST">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <hr><p>pyBAST: Bayesian Astrometry in Python</p>
+
+<hr><p>Date: May 22, 2012<br>
+Version: 0.3<br>
+Authors: Berian James, Josh Bloom<br>
+Copyright: This document has been placed in the public domain.<br>
+License: This code is released under the MIT license.</p>
+
+<h1></h1>
+
+<h1>pyBAST: Bayesian Astrometry</h1>
+
+<p>pyBAST is a Python implementation of the Bayesian Astrometry 
+framework. It provides a module for handling probability
+distributions that represent astronomical objects and for 
+analysing the changes to these distributions between images.</p>
+
+<h1>Using pyBAST</h1>
+
+<h2>Interactive use</h2>
+
+<p>Typical interactive use might look like:</p>
+
+<pre><code>&gt;&gt;&gt; import pyBA
+&gt;&gt;&gt; data = np.loadtxt('examples/astrom_match_stats')
+&gt;&gt;&gt; nties = len(data)
+
+# Load array data into objects
+&gt;&gt;&gt; objectsA = np.array([pyBA.Bivarg(mu=data[i,0:2], sigma=data[i,2:5]) 
+                         for i in range(nties)])
+&gt;&gt;&gt; objectsB = np.array([pyBA.Bivarg(mu=data[i,5:7], sigma=data[i,7:10]) 
+                         for i in range(nties)])
+
+# Select random subset of objects (speeds up testing)
+&gt;&gt;&gt; nsamp = 100
+&gt;&gt;&gt; ix = np.random.permutation(nties)[:nsamp]
+
+# Compute background mapping
+&gt;&gt;&gt; from pyBA.background import distance
+&gt;&gt;&gt; S = pyBA.background.suggest_mapping(objectsA,objectsB)
+&gt;&gt;&gt; P = pyBA.background.MAP(objectsA[ix], objectsB[ix], mu0=S.mu, 
+                            prior=pyBA.Bgmap(), norm_approx=True)
+
+# Create astrometric mapping and condition the local distortions
+&gt;&gt;&gt; D = pyBA.Amap(P,objectsA[ix], objectsB[ix])
+&gt;&gt;&gt; D.condition()
+
+# Plot regression onto regular grid
+&gt;&gt;&gt; D.draw_realisation(res=nres)
+</code></pre>
+
+<p>This functionality is provided in an example script (<code>pyBAST_example.py</code>) and also, with detailed comments, in an iPython notebook (<code>pyBAST_example.ipynb</code>; also in <code>pyBAST_example.pdf</code>).</p>
+
+<h2>Command-line utility</h2>
+
+<p>For non-interactive use, a command utility <code>pyBAST</code> is provided:</p>
+
+<pre><code>&gt; ./pyBAST -h 
+usage: pyBAST [-h] {fit,summary,apply} ...
+
+Perform probabilistic astrometry with pyBA.
+
+positional arguments:
+   {fit,summary,apply}  pyBA command option: should be 'fit', 'summary' or
+                        'apply'
+     fit                determine astrometric mapping solution
+     summary            summarize astrometric mapping solution
+     apply              apply astrometric mapping solution at new locations
+
+optional arguments:
+  -h, --help           show this help message and exit
+</code></pre>
+
+<p>This provides the functionality to fit an astrometric solution (which is written compactly to disk), summarize that solution and then apply it to arbitrary locations:</p>
+
+<pre><code>&gt; ./pyBAST fit -h
+usage: pyBAST fit [-h] [-s N] [-r n] file [output]
+
+Determine astrometric mapping solution
+
+positional arguments:
+   file                 Path to input data file
+   output               Optional[=file.pyBA] path to save output pyBA solution.
+
+optional arguments:
+ -h, --help           show this help message and exit
+ -s N, --subsample N  Use only N random objects from data set
+ -r n, --reject n     Excludes objects with &gt; n sigma residuals
+
+&gt; ./pyBAST summary -h
+usage: pyBAST summary [-h] [-p] file
+
+Summarize astrometric mapping solution
+
+positional arguments:
+  file        Path to astrometric mapping file
+
+optional arguments:
+  -h, --help  show this help message and exit
+  -p, --plot  Plot astrometric map on grid.
+
+&gt; ./pyBAST apply -h  
+usage: pyBAST apply [-h] [-xy x y] [-g res] file [batchfile]
+
+positional arguments:
+  file                Path to astrometric mapping file
+  batchfile           Optional path to file with list of coordinates
+
+optional arguments:
+  -h, --help          show this help message and exit
+  -xy x y             Map coordinate pair (x,y)
+  -g res, --grid res  Map grid of coordinates with density res
+</code></pre>
+
+<h1>What can Bayesian Astrometry in pyBAST do?</h1>
+
+<p>pyBAST provides:</p>
+
+<ul>
+<li><p>Classes for respresenting astronomical objects
+and astrometric mappings as probability distributions</p></li>
+<li><p>Maximum likelihood and multivariate normal likelihood
+approximation routines with these objects.</p></li>
+<li><p>A full <em>non-parametric</em> astrometic analysis of local distortions using gaussian processes</p></li>
+<li><p>MCMC likelihood computation (using emcee)</p></li>
+<li><p>A helpful set of examples</p></li>
+</ul><p>It aspires to (but does not yet) provide:</p>
+
+<ul>
+<li><p>An interface with wcslib and pyfits</p></li>
+<li><p>Handling of priors on object proper motions, parallax</p></li>
+<li><p>Robust support for parallel computation on cluster (though n.b. that native threading via BLAS will occur by default)</p></li>
+</ul><p>See the TODO and ROADMAP documents for short- and long-term
+targets, respectively.</p>
+
+<h1>Thanks</h1>
+
+<p>This work was funded by NSF grant #0941742. The following people contributed to the development of this package: Adam Miller, Henrik Brink, Joey Richards, Dan Starr.</p>
+      </section>
+    </div>
+    <footer>
+      <p>Project maintained by <a href="https://github.com/berianjames">berianjames</a></p>
+      <p>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></p>
+    </footer>
+    <!--[if !IE]><script>fixScale(document);</script><!--<![endif]-->
+    
+  </body>
+</html>
