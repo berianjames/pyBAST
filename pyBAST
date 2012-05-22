@@ -18,6 +18,8 @@ parser_fit = subparsers.add_parser('fit', help='determine astrometric mapping so
                                    description='Determine astrometric mapping solution')
 parser_fit.add_argument('-s', '--subsample', type=int, metavar='N',
                         help='Use only N random objects from data set')
+parser_fit.add_argument('-r', '--reject', type=int, metavar='n',
+                        help='Excludes objects with > n sigma residuals')
 parser_fit.add_argument('file', type=str, help='Path to input data file')
 parser_fit.add_argument('output', type=str, help='Optional[=file.pyBA] path to save output pyBA solution.',
                         default = argparse.SUPPRESS, nargs='?')
@@ -30,6 +32,11 @@ parser_summary.add_argument('file', type=str, help='Path to astrometric mapping 
 
 # create the parser for the "apply" command
 parser_apply = subparsers.add_parser('apply', help='apply astrometric mapping solution at new locations')
+parser_apply.add_argument('file', type=str, help='Path to astrometric mapping file')
+parser_apply.add_argument('-xy', nargs=2, metavar=('x', 'y'), type=float, help='Map coordinate pair (x,y)')
+parser_apply.add_argument('-g', '--grid', metavar=('res'), type=float, help='Map grid of coordinates with density res')
+parser_apply.add_argument('batchfile', type=str, help='Optional path to file with list of coordinates',
+                        default = argparse.SUPPRESS, nargs='?')
 
 args = parser.parse_args()
 
@@ -77,7 +84,7 @@ if args.pyBA_command == 'fit':
     S = pyBA.background.suggest_mapping(objectsA,objectsB)
     P = pyBA.background.MAP( objectsA, objectsB, mu0=S.mu, prior=pyBA.Bgmap(), norm_approx=True )
 
-    print P.mu
+    #print P.mu
     #P = pyBA.Bgmap()
 
     # Create astrometric mapping object
@@ -89,17 +96,119 @@ if args.pyBA_command == 'fit':
     print D.hyperparams
 
     # Write conditioned astrometric map to file
-    output = open(args.output, 'w')
+    output = open(args.output, 'wb')
     pickle.dump(D, output, protocol=-1)
-    #pickle.dumps(D)
     output.close()
 
 ## SUMMARIZE ROUTINE
 elif args.pyBA_command == 'summary':
+
+    # Check if input file exists
+    if not os.path.exists(args.file):
+        sys.exit('ERROR: Data file %s was not found!' % args.file)
+
+    # Try loading file
+    try:
+        mapfile = open(args.file, 'rb')
+        D = pickle.load(mapfile)
+        mapfile.close()
+    except:
+        sys.exit("ERROR: File %s doesn't look like a pyBA mapping!" % args.file)
+
+    # Try to make output look nice
+    import numpy as np
+    np.set_printoptions(precision=3, linewidth=100, suppress=True)
+
+    print
+    print '{0} {1}'.format('Number of tie objects:', len(D.A))
+
+    # Print information about affine mapping
+    print
+    print 'Maximum a posteriori background mapping'
+    print '{0:>20} {1:>6.3f} {2:<6.3f}'.format('Translation (x,y):', D.P.mu[0], D.P.mu[1])
+    print '{0:>20} {1:>6.3f}'.format('Rotation:', D.P.mu[2])
+    print '{0:>20} {1:>6.3f} {2:<6.3f}'.format('Centre (x,y):',D.P.mu[3], D.P.mu[4])
+    print '{0:>20} {1:>6.3f} {2:<6.3f}'.format('Scaling (x,y):',D.P.mu[5], D.P.mu[6])
+    print 
+    print 'Covariance matrix for background mapping parameters'
+    print D.P.sigma
+
+    # Print information about gaussian process
+    print 
+    print '{0:>15} {1:>6.3f}'.format('GP amplitude:',D.amp)
+    print '{0:>15} {1:>6.3f}'.format('GP scale:',D.scale)
+
+    # Plotting
+    if args.plot != False:
+        D.draw_realisation()
+
     pass
 
 ## APPLY ROUTINE
 elif args.pyBA_command == 'apply':
-    pass
+
+    # Check if input file exists
+    if not os.path.exists(args.file):
+        sys.exit('ERROR: Data file %s was not found!' % args.file)
+
+    # Catch case where no coordinates are provided
+    if 'batchfile' not in args.__dict__ and args.xy == None and args.grid == None:
+        sys.exit("ERROR: No coordinates requested!")
+
+    # If batchfile given, read it
+    if 'batchfile' in args.__dict__:
+        # Catch case where batchfile is not valid
+        if not os.path.exists(args.batchfile):
+            sys.exit('ERROR: Coord file %s was not found!' % args.batchfile)
+
+        # Read batchfile
+        import numpy as np
+        try:
+            data = np.loadtxt(args.batchfile)
+            nties = len(data)
+            if data.shape[1] != 2:
+                sys.exit("ERROR: Data in %s not in coordinate pairs x y?" % args.batchfile)
+        except:
+            sys.exit("ERROR: Batch file %s doesn't look like coordinate pairs!" % args.batchfile)
+        
+
+    # Try loading file
+    try:
+        mapfile = open(args.file, 'rb')
+        D = pickle.load(mapfile)
+        mapfile.close()
+    except:
+        sys.exit("ERROR: File %s doesn't look like a pyBA mapping!" % args.file)
+
+    # Check for batchfile
+    if 'batchfile' in args.__dict__:
+        # If batchfile provided, use it
+        pass
+
+    elif args.grid != None:
+        # If no batchfile, check first for grid request
+        from pyBA.plotting import make_grid
+        x, y = make_grid(D.A,args.grid)
+
+        # Perform evaluation of regression function on grid
+        xarr = np.array([x.flatten(),y.flatten()]).T
+        vx, sx = point_eval(mx, Cx, xarr)
+        vy, sy = point_eval(my, Cy, xarr)    
+
+    # Else run 
+    else:
+        # If no batchfile or grid, then evaluate a single point
+        from pymc.gp import point_eval
+        import numpy as np
+
+        print D.hyperparams
+
+        xarr = np.array([ args.xy, [0.0, 0.0] ])
+        dx, sx = point_eval(D.mx, D.cx, xarr)
+        dy, sy = point_eval(D.my, D.cy, xarr)
+
+        xymap = np.array([ args.xy ]) + np.array([ dx[0], dy[0] ])
+        print xymap.flatten()
+        print sx[0], sy[0]
 
 exit()
