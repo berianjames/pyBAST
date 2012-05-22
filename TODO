@@ -7,14 +7,19 @@ version in which they will be implemented.
 ===  ================  
  v    Item             
 ===  ================  
-0.3  Cross-validation of sources (can be threaded)
-0.3  Documentation structure filled out, short detail in each topic
-0.4  Storage format for mappings
+0.3  DONE: Cross-validation of sources (can be threaded)
+0.3  DONE: Standalone fit, summary and query tool 
+0.3  DONE: Storage format for mappings
+0.3  DONE: Plotting routines
+===  ================  
+
+===  ================  
+ v    Item             
+===  ================  
+0.4  Documentation structure filled out, short detail in each topic
 0.4  (x,y) to (ra,dec) mapping within and between images
-0.4  Standalone query tool for (x,y) to (ra,dec) and reverse mapping
 0.5  Handling of false ties, outlier rejection
 0.5  Further methods of distortion mapping
-0.7  Plotting routines
 0.8  Image registration utility
 0.9  Completed documentation, set of examples (ipynb, py)
 ===  ================

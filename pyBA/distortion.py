@@ -111,7 +111,6 @@ def optimise_HP(A, B, P, HP0):
     with astrometric mapping, based on observed data.
     """
 
-    #from pymc.gp.GPutils import trisolve
     from scipy.optimize import fmin, fmin_bfgs
     from scipy.linalg import cho_factor, cho_solve
 
@@ -128,12 +127,6 @@ def optimise_HP(A, B, P, HP0):
     # Define loglikelihood function for gaussian process given data
     def lnprob_cov(C,direction):
         
-        # Handle to cholesky decomposition of trial covariance matrix
-        #Uo = Co.Uo # C(x,x) = Uo.T * Uo
-
-        # More efficient method to get Cholesky covariance matrix
-        #Uo = C.cholesky(xyobs, apply_pivot=False)['U']
-
         # Cholesky computation with numpy
         U, luflag = cho_factor(C)
         
