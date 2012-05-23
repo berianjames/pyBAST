@@ -121,54 +121,26 @@ def draw_realisation(objectsA = np.array([ Bivarg() ]),
                      P = Bgmap(), scale=100., amp= 1.,
                      chol = None, res = 30):
 
-    from pyBA.distortion import compute_displacements, d2, compute_residual
-    from pyBA.distortion import astrometry_cov, astrometry_mean
-
     # Grid for regression
     x,y = make_grid(objectsA,res=res)
     xyarr = np.array([x.flatten(),y.flatten()]).T
 
-    # Compute empirical displacements
-    xobs, yobs, vxobs, vyobs, _, _ = compute_displacements(objectsA, objectsB)
-    xyobs = np.array([xobs.flatten(),yobs.flatten()]).T
-
-    # Compute mean function
-    v = astrometry_mean(xyarr, P)
-
     # If no cholesky matrix A provided, assume that we are
     #  drawing realisation on grid without using observed data
     if chol == None:
-
-        # Compute covariance matrix on grid
-        d2_grid = d2(xyarr,xyarr)
-        C = astrometry_cov(d2_grid, scale, amp)
-
-        # Perform cholesky decomposition
-        from numpy.linalg import cholesky
-        A = cholesky(C)
-
-        # Compute realisation on grid
-        from numpy.random import standard_normal
-        v += A.dot(standard_normal(xyarr.shape))
+        
+        from pyBA.distortion import realise
+        vx, vy = realise(xyarr, P, scale, amp)
 
     # Otherwise, use cholesky data to perform regression
     else:
 
-        # Compute covariance matrix between meshes
-        d2_grid = d2(xyarr,xyobs)
-        C = astrometry_cov(d2_grid, scale, amp)
+        from pyBA.distortion import regression
+        vx, vy, sx, sy = regression(objectsA, objectsB, xyarr, P, scale, amp, chol)
 
-        # Get residuals to mean function
-        from scipy.linalg import cho_solve
-        dx, dy = compute_residual(objectsA, objectsB, P)
-
-        vx = C.dot(cho_solve(chol, dx))
-        vy = C.dot(cho_solve(chol, dy))
-
-        v += np.array([vx, vy]).T
-
-    # Break into components for plotting
-    vx, vy = v[:,0], v[:,1]
+    # Get xy coordinates of base of vectors
+    from pyBA.distortion import compute_displacements
+    xobs, yobs, vxobs, vyobs, _, _ = compute_displacements(objectsA, objectsB)
 
     # Matplotlib plotting
     fig = figure(figsize=(16,16))

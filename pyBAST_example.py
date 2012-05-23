@@ -42,7 +42,7 @@ nres = 30 # Density of interpolation grid points
 #D.draw_background(res=nres)
 
 # Draw realisation of distortion map prior to observation
-D.draw_realisation(res=nres)
+#D.draw_realisation(res=nres)
 
 # Plot residuals
 #D.draw_residuals(res=nres)

@@ -71,40 +71,62 @@ def compute_residual(objectsA, objectsB, P):
 
     return dxy[:,0], dxy[:,1]
 
-def regression(objectsA, objectsB, M, C, direction='x'):
+def realise(xyarr, P, scale, amp):
+    """Evaluate GP realisation on given grid."""
+     
+    # Compute covariance matrix on grid
+    d2_grid = d2(xyarr,xyarr)
+    C = astrometry_cov(d2_grid, scale, amp)
+
+    # Perform cholesky decomposition
+    from numpy.linalg import cholesky
+    A = cholesky(C)
+
+    # Compute realisation on grid
+    from numpy.random import standard_normal
+    v = astrometry_mean(xyarr, P)
+    v += A.dot(standard_normal(xyarr.shape))
+
+    return v[:,0], v[:,1]
+
+def regression(objectsA, objectsB, xyarr, P, scale, amp, chol):
     """ Perform regression on the gaussian processes for the 
-    the distortion map. This updates the
-    gaussian process, which previously contains only information
-    from the background mapping (the mean function), to include
-    local distortion information from the tie objects.
+    the distortion map. This uses the input data to push known
+    values onto a new grid, using the covariance properties of
+    the GP."""
+    
+    # Compute empirical displacements
+    xobs, yobs, vxobs, vyobs, _, _ = compute_displacements(objectsA, objectsB)
+    xyobs = np.array([xobs.flatten(),yobs.flatten()]).T
 
-    Input: objectsA, objectsB - two objects lists
-           M - Gaussian process mean
-           C - Gaussian process covariance function
-    """
+    # Compute covariance matrix between meshes
+    d2_grid = d2(xyarr,xyobs)
+    C = astrometry_cov(d2_grid, scale, amp)
 
-    # Compute displacements between frames for tie objects
-    xobs, yobs, vxobs, vyobs, sxobs, syobs = compute_displacements(objectsA, objectsB)
+    # Compute mean function
+    v = astrometry_mean(xyarr, P)
 
-    obs = np.array([xobs.flatten(), yobs.flatten()]).T
+    # Get residuals to mean function
+    from scipy.linalg import cho_solve
+    dx, dy = compute_residual(objectsA, objectsB, P)
 
-    # Currently, the x- and y-component GP regression is performed
-    # seperately, so observe should be run for each. The direction
-    # keyword controls which direction is being used.
-    if direction is 'x':
-        data = vxobs.flatten()
-        sig = sxobs.flatten()
-    elif direction is 'y':
-        data = vyobs.flatten()
-        sig = syobs.flatten()
-       
-    # Perform observation
-    observe(M=M,C=C,
-            obs_mesh = obs,
-            obs_vals = data,
-            obs_V = sig)
+    vx = C.dot(cho_solve(chol, dx))
+    vy = C.dot(cho_solve(chol, dy))
 
-    return M,C  
+    # Add mean function
+    vx += v[:,0]
+    vy += v[:,1]
+
+    # Compute uncertainties in regression
+    d2_grid = d2(xyarr, xyarr)
+    K = astrometry_cov(d2_grid, scale, amp)
+    S = K - C.dot(cho_solve(chol, C.T))
+
+    print np.diag(S).reshape( (30, 30) )
+    sx = np.diag(S)
+    sy = np.diag(S)
+    
+    return vx, vy, sx, sy
 
 def optimise_HP(A, B, P, HP0):
     """ Condition hyperparameters of gaussian process associated 
