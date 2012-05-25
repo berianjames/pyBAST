@@ -1,7 +1,9 @@
 import numpy as np
+import scipy as sp
 from numpy import linspace, array, meshgrid, sqrt
 from pyBA.classes import Bgmap, Bivarg
 from numpy.linalg import norm
+
 
 def d2(x,y):
     """For two n x 2 vectors (can be the same), compute the squared
@@ -10,19 +12,26 @@ def d2(x,y):
     
     return cdist(x, y, 'sqeuclidean')
 
-def astrometry_cov(d2,scale=100.,amp=1.0,nugget=None):
+def astrometry_cov(d2,scale=100.,amp=np.eye(2),var=None):
     """Evaluate covariance for gaussian process,
     given squared distance matrix and covariance parameters."""
     from numpy import exp, diag
     
-    C = amp * exp( -d2 / scale )
+    S = exp( -d2 / scale ) # Correlation matrix
+    C = np.kron(S, amp)    # Covariance matrix
 
-    if nugget != None:
-        # Assume nugget is a vector to be applied along the diagonal
-        if np.size(nugget) == 1: # Scalar 
-            C += diag(np.tile(nugget,C.shape[0]))
-        elif np.size(nugget) == C.shape[0]: # Vector
-            C += diag(nugget)
+    if var != None:
+        # If scalar measurement uncertainty ('nugget') is used
+        if np.size(var) == 1: 
+            C += diag(np.tile(var,C.shape[0]))
+
+        # If measurement uncertainty is a vector
+        elif np.size(var) == C.shape[0]: # Vector
+            C += diag(var)
+
+        # If measurement uncertainty is a vector of 2x2 matrices
+        elif np.shape(var) == (C.shape[0], 2, 2):
+            C += sp.linalg.block_diag( *[v for v in var] )
 
     return C
 
@@ -86,13 +95,13 @@ def realise(xyarr, P, scale, amp):
     A = cholesky(C)
 
     # Compute realisation on grid
-    from numpy.random import standard_normal
+    from numpy.random import randn
     v = astrometry_mean(xyarr, P)
-    v += A.dot(standard_normal(xyarr.shape))
+    v += A.dot(randn(xyarr.size)).reshape(v.shape)
 
     return v[:,0], v[:,1]
 
-def regression(objectsA, objectsB, xyarr, P, scale, amp, cholx, choly):
+def regression(objectsA, objectsB, xyarr, P, scale, amp, chol):
     """ Perform regression on the gaussian processes for the 
     the distortion map. This uses the input data to push known
     values onto a new grid, using the covariance properties of
@@ -112,22 +121,22 @@ def regression(objectsA, objectsB, xyarr, P, scale, amp, cholx, choly):
     # Get residuals to mean function
     from scipy.linalg import cho_solve
     dx, dy = compute_residual(objectsA, objectsB, P)
+    dxy = np.array([dx, dy]).T.flatten()
 
-    vx = C.dot(cho_solve(cholx, dx))
-    vy = C.dot(cho_solve(choly, dy))
+    v += C.dot(cho_solve(chol, dxy)).reshape(v.shape)
 
     # Add mean function
-    vx += v[:,0]
-    vy += v[:,1]
+    vx = v[:,0]
+    vy = v[:,1]
 
     # Compute uncertainties in regression
     d2_grid = d2(xyarr, xyarr)
     K = astrometry_cov(d2_grid, scale, amp)
-    Sx = K - C.dot(cho_solve(cholx, C.T))
-    Sy = K - C.dot(cho_solve(choly, C.T))
+    S = K - C.dot(cho_solve(chol, C.T))
 
-    sx = np.diag(Sx)
-    sy = np.diag(Sy)
+    s = np.diag(S).reshape(v.shape)
+    sx = s[:,0]
+    sy = s[:,1]
     
     return vx, vy, sx, sy
 
@@ -145,27 +154,25 @@ def optimise_HP(A, B, P, HP0):
 
     # Get residuals to mean function
     dx, dy = compute_residual(A, B, P)
+
+    # CAUTION: This is tricky! Pack elements into a
+    #  vector [(x1,y1), (x2,y2) ... (xn,yn)], 
+    #  !NOT! [(x1,x2,...,xn), (y1,y2,...,yn)]
+    dxy = np.array([dx, dy]).T.flatten()
     
     # Pre-compute distance matrix and grab nugget components
     d2_obs = d2(xyobs, xyobs)
-    nuggetx = np.array([o.sigma[0,0] for o in A])
-    nuggety = np.array([o.sigma[1,1] for o in A])
+    V = np.array([a.sigma for a in A]) + np.array([b.sigma for b in B])
 
     # Define loglikelihood function for gaussian process given data
-    def lnprob_cov(C,direction):
+    def lnprob_cov(C):
         
         # Cholesky computation with numpy
         U, luflag = cho_factor(C)
         
-        # Get correct vector of residuals
-        if direction is 'x':
-            y = dx
-        elif direction is 'y':
-            y = dy
-
         # Get first term of loglikelihood expression (y * (1/C) * y.T)
-        x2 = cho_solve((U, luflag), y)
-        L1 = y.dot(x2)
+        x2 = cho_solve((U, luflag), dxy)
+        L1 = dxy.dot(x2)
 
         # Get second term of loglikelihood expression (2*pi log det C)
         L2 = 2 * np.pi *  np.sum( 2*np.log(np.diag(U)) )
@@ -175,27 +182,50 @@ def optimise_HP(A, B, P, HP0):
 
         return thing_to_be_minimised
 
+    def make_pos(scale, amp, crossamp):
+        """Make scale and amplitude parameters positive, and 
+        amplitude matrix positive semi-definite. """
+
+        # Ensure scale parameter is positive
+        scale_pos = np.abs( scale )
+
+        # Ensure amplitude term is positive
+        amp_pos = np.abs( amp )
+
+        # Ensure amplitude matrix will be positive semi-definite
+        #  by clipping the magnitude of the off diagonal term to be
+        #  just less than that of the  diagonal if required, but
+        #  keep its overall sign.
+        if crossamp*crossamp >= amp_pos*amp_pos:
+            crossamp = (0.99 * amp_pos) * (crossamp / np.abs(crossamp))
+
+        amp_M = np.array([ [amp_pos, crossamp], [crossamp, amp_pos] ])
+
+        return scale_pos, amp_M
+
     # Define loglikelihood function for hyperparameter vector
     def lnprob_HP(HP):
         """ Returns the log probability (\propto -0.5*chi^2) of the
         hyperparameter set HP for the Gaussian process.
         """
             
-        # Ensure parameters are positive
-        HPpos = np.abs( HP )
+        # Make input parameters physically plausible
+        scale_pos, ampM_pos = make_pos(*HP)
 
-        cx_try = astrometry_cov(d2_obs, HPpos[0], HPpos[1], nugget=0.1*nuggetx)
-        cy_try = astrometry_cov(d2_obs, HPpos[0], HPpos[1], nugget=0.1*nuggety)
+        # Build trial covariance matrix
+        c_try = astrometry_cov(d2_obs, scale_pos, ampM_pos, var=V)
         
-        llik = lnprob_cov(cx_try,direction='x') + \
-            lnprob_cov(cy_try,direction='y')
+        # Evaluate loglikelihood
+        llik = lnprob_cov(c_try)
 
-        print HPpos, llik
+        #print scale_pos
+        #print ampM_pos
         return llik
 
     # Perform optimisation
     ML_HP = fmin(lnprob_HP,HP0, xtol=1.0e-2, ftol=1.0e-6, disp=False)
     #ML_HP = fmin_bfgs(lnprob_HP,HP0, disp=False)
 
-    return np.abs( ML_HP ), lnprob_HP(ML_HP)
+    scale_pos, ampM_pos = make_pos(*ML_HP)
+    return scale_pos, ampM_pos, lnprob_HP(ML_HP)
     

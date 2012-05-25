@@ -15,7 +15,7 @@ t2 = timeit.time.time()
 print t2 - t1
 
 # Select random subset of tie objects
-nsamp = 300#nties
+nsamp = 100#nties
 ix = np.random.permutation(nties)[:nsamp]
 #print ix
 
@@ -50,7 +50,9 @@ nres = 30 # Density of interpolation grid points
 ## OBSERVATION
 # Condition GP hyperparameters
 D.condition()
+print D.hyperparams
 
+D.build_covariance(scale=100000)
 print D.hyperparams
 
 # Show mean function (the background transformation)

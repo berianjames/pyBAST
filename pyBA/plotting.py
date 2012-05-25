@@ -116,8 +116,7 @@ def draw_MAP_residuals(objectsA, objectsB, P, scaled='no'):
     ax.autoscale(enable=None, axis='both', tight=True)
     show()
 
-def draw_realisation(objectsA, objectsB, P, scale, amp,
-                     chol, cholx, choly, res = 30):
+def draw_realisation(objectsA, objectsB, P, scale, amp, chol, res = 30):
 
     # Grid for regression
     x,y = make_grid(objectsA,res=res)
@@ -125,7 +124,7 @@ def draw_realisation(objectsA, objectsB, P, scale, amp,
 
     # If no cholesky matrix A provided, assume that we are
     #  drawing realisation on grid without using observed data
-    if chol == False:
+    if chol == None:
         
         from pyBA.distortion import realise
         vx, vy = realise(xyarr, P, scale, amp)
@@ -136,7 +135,7 @@ def draw_realisation(objectsA, objectsB, P, scale, amp,
 
         from pyBA.distortion import regression
         vx, vy, sx, sy = regression(objectsA, objectsB, xyarr, P, 
-                                    scale, amp, cholx, choly)
+                                    scale, amp, chol)
 
     # Get xy coordinates of base of vectors
     from pyBA.distortion import compute_displacements

@@ -200,7 +200,7 @@ class Amap:
     __version__ = "0.2"
     __email__ = "berian@berkeley.edu"
 
-    def __init__(self,P,A,B,scale=100.0,amp=20.0):
+    def __init__(self,P,A,B,scale=100.0,amp=2.0*np.eye(2)):
         """ Create instance of astrometric map from a background mapping
         (Bgmap object P) and objects in each frame (Bivarg arrays A and B).
         """
@@ -215,18 +215,18 @@ class Amap:
         self.amp = amp
         self.hyperparams = {'scale': self.scale, 'amp': self.amp}
 
-        # Define covariance matrix for data points
-        xyarr = np.array([o.mu for o in self.A])
-        self.d2 = d2(xyarr,xyarr)
-        self.Cx = astrometry_cov(self.d2, self.scale, self.amp,
-                                 nugget = np.array([o.sigma[0,0] for o in A]))
-        self.Cy = astrometry_cov(self.d2, self.scale, self.amp,
-                                 nugget = np.array([o.sigma[1,1] for o in A]))
+        # Gather locations of inputs and build distance matrix
+        self.xyarr = np.array([o.mu for o in self.A])
+        self.d2 = d2(self.xyarr,self.xyarr)
+
+        # Use measurement uncertainties of displacement as 'nugget'
+        self.V = np.array([a.sigma for a in A]) + np.array([b.sigma for b in B])
+
+        # Build covariance matrix for data points
+        self.C = astrometry_cov(self.d2, self.scale, self.amp, var = self.V)
 
         # Don't compute cholesky decomposition of C until needed
-        self.chol = False
-        self.cholx = None
-        self.choly = None
+        self.chol = None
 
         return 
 
@@ -246,16 +246,14 @@ class Amap:
 
         # If GP is not conditioned (as checked by self.chol not yet computed),
         #  draw realisation without using input data
-        if self.chol == False:
+        if self.chol == None:
             draw_realisation(self.A, self.B, self.P, self.scale, 
-                             self.amp, self.chol, self.cholx, self.choly,
-                             res=res)
+                             self.amp, self.chol, res=res)
 
         # Otherwise, perform regression on observed data
         else:
             draw_realisation(self.A, self.B, self.P, self.scale, 
-                             self.amp, self.chol, self.cholx, self.choly,
-                             res=res)
+                             self.amp, self.chol, res=res)
             
         return
 
@@ -267,23 +265,23 @@ class Amap:
         draw_MAP_residuals(self.A, self.B, self.P, scaled=scaled)
         return
 
-    def build_covariance(self,scale,amp):
+    def build_covariance(self,scale=None,amp=None):
 
         from pyBA.distortion import astrometry_cov
 
-        self.scale = scale
-        self.amp = amp
+        if scale != None:
+            self.scale = scale
+            self.hyperparams['scale'] = scale
 
-        self.Cx = astrometry_cov(self.d2, self.scale, self.amp,
-                                 nugget=self.nuggetx)
-        self.Cy = astrometry_cov(self.d2, self.scale, self.amp,
-                                 nugget=self.nuggety)
+        if amp != None:
+            self.amp = amp
+            self.hyperparams['amp'] = amp
+        
+        self.C = astrometry_cov(self.d2, self.scale, self.amp, var = self.V)
 
         # Compute cholesky decomposition of C with optimised parameters
         from scipy.linalg import cho_factor
-        self.chol = True
-        self.cholx = cho_factor(self.Cx)
-        self.choly = cho_factor(self.Cy)
+        self.chol = cho_factor(self.C)
 
     def condition(self):
         """ Conditions hyper-parameters of gaussian process.
@@ -292,34 +290,16 @@ class Amap:
         from pyBA.distortion import d2
         from pyBA.distortion import optimise_HP
 
-        # Initial hyperparameter vector
-        HP0 = np.array([self.scale, self.amp])
-
-        # Store handles to objects lists and mean processes
-        A = self.A
-        B = self.B
-        P = self.P
+        HP0 = [self.scale, self.amp[0,0], self.amp[0,1]]
 
         # Optimise hyperparameters
-        ML_output = optimise_HP(A, B, P, HP0)
-        ML_HP = ML_output[0]
-        ML_lnprob = ML_output[1]
+        ML_output = optimise_HP(self.A, self.B, self.P, HP0)
+        scale_conditioned = ML_output[0]
+        amp_conditioned = ML_output[1]
+        ML_lnprob = ML_output[2]
 
-        # Reconstruct Dmap with conditioned hyperparameters
-        # New GP hyperparameters
-        self.scale = ML_HP[0]
-        self.amp = ML_HP[1]
-        self.hyperparams = {'scale': self.scale, 'amp': self.amp}
-
-        # Define covariance matrix for data points
-        xyarr = np.array([o.mu for o in A])
-        self.d2 = d2(xyarr,xyarr)
-        self.nuggetx = np.array([o.sigma[0,0] for o in A]) + \
-             np.array([o.sigma[0,0] for o in B])
-        self.nuggety = np.array([o.sigma[1,1] for o in A]) + \
-             np.array([o.sigma[1,1] for o in B])
-
-        self.build_covariance(self.scale,self.amp)
+        # Rebuild covariance matrix with updated hyperparameters
+        self.build_covariance(scale_conditioned, amp_conditioned) 
         
-        return ML_HP, ML_lnprob
+        return ML_output
         
