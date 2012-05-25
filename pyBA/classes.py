@@ -200,7 +200,7 @@ class Amap:
     __version__ = "0.2"
     __email__ = "berian@berkeley.edu"
 
-    def __init__(self,P,A,B,scale=100.0,amp=2.0):
+    def __init__(self,P,A,B,scale=100.0,amp=20.0):
         """ Create instance of astrometric map from a background mapping
         (Bgmap object P) and objects in each frame (Bivarg arrays A and B).
         """
@@ -218,10 +218,15 @@ class Amap:
         # Define covariance matrix for data points
         xyarr = np.array([o.mu for o in self.A])
         self.d2 = d2(xyarr,xyarr)
-        self.C = astrometry_cov(self.d2, self.scale, self.amp)
+        self.Cx = astrometry_cov(self.d2, self.scale, self.amp,
+                                 nugget = np.array([o.sigma[0,0] for o in A]))
+        self.Cy = astrometry_cov(self.d2, self.scale, self.amp,
+                                 nugget = np.array([o.sigma[1,1] for o in A]))
 
         # Don't compute cholesky decomposition of C until needed
-        self.chol = None
+        self.chol = False
+        self.cholx = None
+        self.choly = None
 
         return 
 
@@ -241,14 +246,16 @@ class Amap:
 
         # If GP is not conditioned (as checked by self.chol not yet computed),
         #  draw realisation without using input data
-        if self.chol == None:
+        if self.chol == False:
             draw_realisation(self.A, self.B, self.P, self.scale, 
-                             self.amp, chol=self.chol, res= res)
+                             self.amp, self.chol, self.cholx, self.choly,
+                             res=res)
 
         # Otherwise, perform regression on observed data
         else:
             draw_realisation(self.A, self.B, self.P, self.scale, 
-                             self.amp, chol=self.chol, res= res)
+                             self.amp, self.chol, self.cholx, self.choly,
+                             res=res)
             
         return
 
@@ -260,11 +267,29 @@ class Amap:
         draw_MAP_residuals(self.A, self.B, self.P, scaled=scaled)
         return
 
+    def build_covariance(self,scale,amp):
+
+        from pyBA.distortion import astrometry_cov
+
+        self.scale = scale
+        self.amp = amp
+
+        self.Cx = astrometry_cov(self.d2, self.scale, self.amp,
+                                 nugget=self.nuggetx)
+        self.Cy = astrometry_cov(self.d2, self.scale, self.amp,
+                                 nugget=self.nuggety)
+
+        # Compute cholesky decomposition of C with optimised parameters
+        from scipy.linalg import cho_factor
+        self.chol = True
+        self.cholx = cho_factor(self.Cx)
+        self.choly = cho_factor(self.Cy)
+
     def condition(self):
         """ Conditions hyper-parameters of gaussian process.
         """
 
-        from pyBA.distortion import astrometry_cov, d2
+        from pyBA.distortion import d2
         from pyBA.distortion import optimise_HP
 
         # Initial hyperparameter vector
@@ -289,11 +314,12 @@ class Amap:
         # Define covariance matrix for data points
         xyarr = np.array([o.mu for o in A])
         self.d2 = d2(xyarr,xyarr)
-        self.C = astrometry_cov(self.d2, self.scale, self.amp)
+        self.nuggetx = np.array([o.sigma[0,0] for o in A]) + \
+             np.array([o.sigma[0,0] for o in B])
+        self.nuggety = np.array([o.sigma[1,1] for o in A]) + \
+             np.array([o.sigma[1,1] for o in B])
 
-        # Compute cholesky decomposition of C with optimised parameters
-        from scipy.linalg import cho_factor
-        self.chol = cho_factor(self.C)
+        self.build_covariance(self.scale,self.amp)
         
         return ML_HP, ML_lnprob
         

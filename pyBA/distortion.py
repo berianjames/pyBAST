@@ -10,7 +10,7 @@ def d2(x,y):
     
     return cdist(x, y, 'sqeuclidean')
 
-def astrometry_cov(d2,scale=100.,amp=1.,nugget=None):
+def astrometry_cov(d2,scale=100.,amp=1.0,nugget=None):
     """Evaluate covariance for gaussian process,
     given squared distance matrix and covariance parameters."""
     from numpy import exp, diag
@@ -19,7 +19,10 @@ def astrometry_cov(d2,scale=100.,amp=1.,nugget=None):
 
     if nugget != None:
         # Assume nugget is a vector to be applied along the diagonal
-        C += diag(nugget)
+        if np.size(nugget) == 1: # Scalar 
+            C += diag(np.tile(nugget,C.shape[0]))
+        elif np.size(nugget) == C.shape[0]: # Vector
+            C += diag(nugget)
 
     return C
 
@@ -89,7 +92,7 @@ def realise(xyarr, P, scale, amp):
 
     return v[:,0], v[:,1]
 
-def regression(objectsA, objectsB, xyarr, P, scale, amp, chol):
+def regression(objectsA, objectsB, xyarr, P, scale, amp, cholx, choly):
     """ Perform regression on the gaussian processes for the 
     the distortion map. This uses the input data to push known
     values onto a new grid, using the covariance properties of
@@ -110,8 +113,8 @@ def regression(objectsA, objectsB, xyarr, P, scale, amp, chol):
     from scipy.linalg import cho_solve
     dx, dy = compute_residual(objectsA, objectsB, P)
 
-    vx = C.dot(cho_solve(chol, dx))
-    vy = C.dot(cho_solve(chol, dy))
+    vx = C.dot(cho_solve(cholx, dx))
+    vy = C.dot(cho_solve(choly, dy))
 
     # Add mean function
     vx += v[:,0]
@@ -120,11 +123,11 @@ def regression(objectsA, objectsB, xyarr, P, scale, amp, chol):
     # Compute uncertainties in regression
     d2_grid = d2(xyarr, xyarr)
     K = astrometry_cov(d2_grid, scale, amp)
-    S = K - C.dot(cho_solve(chol, C.T))
+    Sx = K - C.dot(cho_solve(cholx, C.T))
+    Sy = K - C.dot(cho_solve(choly, C.T))
 
-    print np.diag(S).reshape( (30, 30) )
-    sx = np.diag(S)
-    sy = np.diag(S)
+    sx = np.diag(Sx)
+    sy = np.diag(Sy)
     
     return vx, vy, sx, sy
 
@@ -143,8 +146,10 @@ def optimise_HP(A, B, P, HP0):
     # Get residuals to mean function
     dx, dy = compute_residual(A, B, P)
     
-    # Pre-compute distance matrix
+    # Pre-compute distance matrix and grab nugget components
     d2_obs = d2(xyobs, xyobs)
+    nuggetx = np.array([o.sigma[0,0] for o in A])
+    nuggety = np.array([o.sigma[1,1] for o in A])
 
     # Define loglikelihood function for gaussian process given data
     def lnprob_cov(C,direction):
@@ -166,7 +171,7 @@ def optimise_HP(A, B, P, HP0):
         L2 = 2 * np.pi *  np.sum( 2*np.log(np.diag(U)) )
 
         # Why am I always confused by this?
-        thing_to_be_minimised = L1 + L2
+        thing_to_be_minimised = (L1 + L2)
 
         return thing_to_be_minimised
 
@@ -179,19 +184,18 @@ def optimise_HP(A, B, P, HP0):
         # Ensure parameters are positive
         HPpos = np.abs( HP )
 
-        #print HPpos
-
-        cx_try = astrometry_cov(d2_obs, *HPpos)
-        cy_try = astrometry_cov(d2_obs, *HPpos)
+        cx_try = astrometry_cov(d2_obs, HPpos[0], HPpos[1], nugget=0.1*nuggetx)
+        cy_try = astrometry_cov(d2_obs, HPpos[0], HPpos[1], nugget=0.1*nuggety)
         
         llik = lnprob_cov(cx_try,direction='x') + \
             lnprob_cov(cy_try,direction='y')
 
-        #print HPpos, llik
+        print HPpos, llik
         return llik
 
     # Perform optimisation
     ML_HP = fmin(lnprob_HP,HP0, xtol=1.0e-2, ftol=1.0e-6, disp=False)
+    #ML_HP = fmin_bfgs(lnprob_HP,HP0, disp=False)
 
-    return ML_HP, lnprob_HP(ML_HP)
+    return np.abs( ML_HP ), lnprob_HP(ML_HP)
     

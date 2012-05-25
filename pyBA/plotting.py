@@ -1,4 +1,4 @@
-from pylab import plot, show, quiver, figure, gca
+from pylab import plot, show, quiver, figure, gca, imshow
 from matplotlib.patches import Ellipse
 import numpy as np
 from pyBA.classes import Bivarg, Bgmap
@@ -116,10 +116,8 @@ def draw_MAP_residuals(objectsA, objectsB, P, scaled='no'):
     ax.autoscale(enable=None, axis='both', tight=True)
     show()
 
-def draw_realisation(objectsA = np.array([ Bivarg() ]),
-                     objectsB = np.array([ Bivarg() ]),
-                     P = Bgmap(), scale=100., amp= 1.,
-                     chol = None, res = 30):
+def draw_realisation(objectsA, objectsB, P, scale, amp,
+                     chol, cholx, choly, res = 30):
 
     # Grid for regression
     x,y = make_grid(objectsA,res=res)
@@ -127,16 +125,18 @@ def draw_realisation(objectsA = np.array([ Bivarg() ]),
 
     # If no cholesky matrix A provided, assume that we are
     #  drawing realisation on grid without using observed data
-    if chol == None:
+    if chol == False:
         
         from pyBA.distortion import realise
         vx, vy = realise(xyarr, P, scale, amp)
+        sx, sy = None, None
 
     # Otherwise, use cholesky data to perform regression
     else:
 
         from pyBA.distortion import regression
-        vx, vy, sx, sy = regression(objectsA, objectsB, xyarr, P, scale, amp, chol)
+        vx, vy, sx, sy = regression(objectsA, objectsB, xyarr, P, 
+                                    scale, amp, cholx, choly)
 
     # Get xy coordinates of base of vectors
     from pyBA.distortion import compute_displacements
@@ -147,7 +147,13 @@ def draw_realisation(objectsA = np.array([ Bivarg() ]),
     ax = fig.add_subplot(111, aspect='equal')
     quiver(x,y,vx,vy,scale_units='width',scale=res*res)
     quiver(xobs,yobs,vxobs,vyobs,color='r',scale_units='width',scale=res*res)
+    
+    # If uncertainties are also provided, plot them as a background image
+    if sx != None:
+        sarr = np.array(sx + sy).reshape( x.shape )
+        imshow(sarr, origin='upper', extent=(x.min(), x.max(), y.min(), y.max()))
+            
     ax.autoscale(enable=None, axis='both', tight=True)
     show()
-    
-    return
+
+    return 
