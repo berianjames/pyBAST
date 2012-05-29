@@ -200,7 +200,7 @@ class Amap:
     __version__ = "0.2"
     __email__ = "berian@berkeley.edu"
 
-    def __init__(self,P,A,B,scale=100.0,amp=2.0*np.eye(2)):
+    def __init__(self,P,A,B,scale=100000.0,amp=2.0*np.eye(2)):
         """ Create instance of astrometric map from a background mapping
         (Bgmap object P) and objects in each frame (Bivarg arrays A and B).
         """

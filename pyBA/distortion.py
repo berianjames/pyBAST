@@ -174,8 +174,8 @@ def optimise_HP(A, B, P, HP0):
         x2 = cho_solve((U, luflag), dxy)
         L1 = dxy.dot(x2)
 
-        # Get second term of loglikelihood expression (2*pi log det C)
-        L2 = 2 * np.pi *  np.sum( 2*np.log(np.diag(U)) )
+        # Get second term of loglikelihood expression (log det C)
+        L2 = np.sum( 2*np.log(np.diag(U)) )
 
         # Why am I always confused by this?
         thing_to_be_minimised = (L1 + L2)

@@ -1,4 +1,4 @@
-from pylab import plot, show, quiver, figure, gca, imshow
+from pylab import plot, show, quiver, figure, gca, imshow, colorbar
 from matplotlib.patches import Ellipse
 import numpy as np
 from pyBA.classes import Bivarg, Bgmap
@@ -145,12 +145,14 @@ def draw_realisation(objectsA, objectsB, P, scale, amp, chol, res = 30):
     fig = figure(figsize=(16,16))
     ax = fig.add_subplot(111, aspect='equal')
     quiver(x,y,vx,vy,scale_units='width',scale=res*res)
-    quiver(xobs,yobs,vxobs,vyobs,color='r',scale_units='width',scale=res*res)
+    quiver(xobs,yobs,vxobs,vyobs,color='w',scale_units='width',scale=res*res)
     
     # If uncertainties are also provided, plot them as a background image
     if sx != None:
         sarr = np.array(sx + sy).reshape( x.shape )
-        imshow(sarr, origin='upper', extent=(x.min(), x.max(), y.min(), y.max()))
+        imshow(np.sqrt(sarr), origin='upper', extent=(x.min(), x.max(), y.min(), y.max()),
+               interpolation=None)
+        colorbar()
             
     ax.autoscale(enable=None, axis='both', tight=True)
     show()
