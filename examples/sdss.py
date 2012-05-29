@@ -1,3 +1,15 @@
+#!/usr/bin/env python
+
+"""
+This file is part of pyBAST, Bayesian Astrometry
+Copyright (C) Joshua S. Bloom. All Rights Reserved. 2012.
+
+See the license file as part of this project on github.
+
+usage: see the associated ipython notebook in this folder.
+
+"""
+
 import os, sys, string,urllib2,urllib,copy
 from math import log10, radians, pi, sin, cos, atan2, sqrt
 import time, traceback, datetime
@@ -13,9 +25,7 @@ class sdssq(object):
     formats = ['csv','xml','html']
     def_fmt = "csv"
     sdss_coadd_platescale = 0.396127 ## arcsec/pix
-    
-
-        
+    def_t0 = 5.21972623E4  # fidual time
     
     def _filtercomment(self,sql):
         "Get rid of comments starting with --. Function from Tomas Budavari's code (sqlcl.py)"
@@ -29,17 +39,21 @@ class sdssq(object):
         makes a recarray of the query results
         """
         rez = self._query(sql,url=url,fmt=fmt)
-        print rez.readlines()
-        rez.seek(0)
+        #print rez.readlines()
+        #rez.seek(0)
         tmp = rez.readline()
         rez.seek(0)
         if len(tmp) == 0 or tmp.find("error_message") != -1 or tmp.find("ERROR") != -1:
             print "rez:"
             print rez.readlines()
             return np.zeros((1,)).view(np.recarray)
-        
-        return csv2rec(rez)
-        
+       
+        try:
+            return csv2rec(rez)
+        except:
+            print "err"
+            print rez.readlines()
+            
     def _query(self,sql,url=dr_url,fmt=def_fmt):
         "Run query and return file object"
 
@@ -83,7 +97,7 @@ class sdssq(object):
         return distance
 
     def write_match_files(self,master,pos=(342.1913750,-0.9019444), scale=sdss_coadd_platescale,\
-        runids=[4198]):
+        runids=[4198],t0=def_t0):
         
         if isinstance(runids,str):
             if runids == "all":
@@ -96,27 +110,70 @@ class sdssq(object):
         mind = 100.0
         bestid = -1
         gotit = False
+        mpos = tuple()
         for x in master:
             d = self.dist(pos[0],pos[1],x["ra"],x["dec"])
             if d < mind:
                 mind = d
                 bestid = x["master_objid"]
-            if mind < 2.5/(3600.0):
+                mpos = (x["master_ra"],x["master_dec"])
+            if mind < 1.5/(3600.0):
                 gotit= True
                 break
         
         if gotit:
-            print "source of interest: mind=", mind, "bestid=", bestid
+            print "source of interest: mind=%.3f arcsec sourceid=%i" % (mind*3600, bestid)
+            print " master position = %s" % repr(mpos)
         else:
             print "couldn't find the source after %i sources searched" % len(master)
+        
+        ## make conversion table for RA,DEC
+        convra = lambda ra: (ra - pos[0])*np.cos(pos[1])*3600.0
+        convdec = lambda dec: (dec - pos[1])*3600.0
             
-        #for r in runids:
-        #    ## get only the matches
-        #    tmp = master[np.where(master.run == r)]
-        
-        
+        for r in runids:
+            ## get only the matches for this run
+            tmp = master[np.where(master.run == r)]
+            fname = "match_astrom_%.4f_%.5f_run%i.dat" % (pos[0],pos[1],r)
+            f = open(fname,"w")
+            f.write("# filename: %s \n" % fname)
+            f.write("# nominal center (used for x,y conversion): %f %f\n" % (pos[0],pos[1]))
+            if gotit:
+                f.write("# source of interest:\n")
+                f.write("#   master_objid = %i,  master_ra = %f, master_dec = %f \n" % \
+                        (bestid,mpos[0],mpos[1]))
+                ttt = np.where(tmp["master_objid"] == bestid)
+                f.write("#   fiducal master location (delta ra, delta dec): %f %f\n" % \
+                        (convra(mpos[0]),convdec(mpos[1])))
+                if len(ttt) > 0:
+                    f.write("# converted source location (delta ra, delta dec): %f %f\n" % \
+                            (convra(tmp[ttt]["ra"]),convdec(tmp[ttt]["dec"])))
+                    f.write("# source location (ra, dec): %f %f\n" % \
+                                    (tmp[ttt]["ra"],tmp[ttt]["dec"]))
+                    f.write("# source error (raerr, decerr): %f %f\n" % \
+                                (tmp[ttt]["raerr"],tmp[ttt]["decerr"]))                
+            else:
+                f.write("# could not find master source of interest\n")
+                
+            f.write("# observation time %f day (+ %f day)\n" % (tmp["time"][0],t0))
+            f.write("master_objid,objid,master_ra,master_dec,master_dra,master_ddec")
+            f.write(",master_raerr,master_decerr,master_radeccov,ra,dec,dra,ddec,raerr,decerr,radeccov")
+            f.write(",master_rmag,rmag\n")
+            for x in tmp[np.where(tmp["master_objid"] != bestid)]:
+                f.write("%i,%i" % (x["master_objid"],x["objid"]))
+                f.write(",%f,%f,%f,%f" % (x["master_ra"],x["master_dec"],\
+                         convra(x["master_ra"]),convdec(x["master_dec"])))
+                f.write(",%f,%f,0.0" % (x["master_raerr"],x["master_decerr"]))
+                f.write(",%f,%f,%f,%f" % (x["ra"],x["dec"],\
+                         convra(x["ra"]),convdec(x["dec"])))
+                f.write(",%f,%f,0.0" % (x["raerr"],x["decerr"]))
+                f.write(",%f,%f\n" % (x["master_rmag"],x["rmag"]))
+                
+            f.close()
+            print "wrote %i matches in file %s" % (len(tmp[np.where(tmp["master_objid"] != bestid)]),fname)
+            
     # 342.1913750  -0.9019444 J2000
-    def get_master_cat(self,pos=(342.1913750, -0.9019444),errdeg=0.1,rcut=23.5,t0=5.21972623E4,\
+    def get_master_cat(self,pos=(342.1913750, -0.9019444),errdeg=0.07,rcut=22.5,t0=def_t0,\
         MASTER_PRE = "master_sdss",savefile=True):
         """
         issue the ugly query to get master catalog positions in stripe82 over time
@@ -143,19 +200,19 @@ class sdssq(object):
                 join PhotoObjAll p on n.objID=p.objID
                 WHERE 
                 n.run in (106,206)
-                %s) as rr0, star p,star q 
+                %s) as rr0, PhotoObj p,PhotoObj q 
                 where rr0.objid = p.objid
-                and q.htmid between 2000*(p.htmid/2000) and 2000*(p.htmid/2000+1) and
+                and q.htmid between 3000*(p.htmid/3000) and 3000*(p.htmid/3000+2) and
                 q.objid != p.objid
                 and dbo.fdistancearcmineq(rr0.ra,rr0.dec,q.ra,q.dec)*60 < 2 )  as cc
                 join PhotoObjAll p on cc.objid=p.objID
                 join Field F on F.fieldID = p.fieldID
-                 order by
-                time
+                 -- order by
+                 -- time
                 
         """ % (t0,ramin,ramax,decmin,decmax, rc)
         
-        print q
+        #print q
         rez = self.recquery(q)
         if savefile and not os.path.exists(master_name):
             np.savez(master_name,master=rez)
@@ -183,7 +240,10 @@ class sdssq(object):
         """
         return self.recquery(q)
             
-            
+    def test3(self):
+        m = self.get_master_cat()
+        t = self.write_match_files(m)
+        
 """
 In [4]: b[5].ra, b[5].dec
 Out[4]: (342.19783344000001, -0.89816640000000003)
