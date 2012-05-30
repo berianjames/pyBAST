@@ -4,7 +4,7 @@ import pyBA
 import timeit
 
 # Load data
-data = np.loadtxt('examples/astrom_match_stats')
+data = np.loadtxt('astrom_match_stats')
 nties = len(data)
 
 # Parse catalogues into object list

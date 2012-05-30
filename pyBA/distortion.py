@@ -2,7 +2,10 @@ import numpy as np
 import scipy as sp
 from numpy import linspace, array, meshgrid, sqrt
 from pyBA.classes import Bgmap, Bivarg
-from numpy.linalg import norm
+from numpy.linalg import norm, eigh, slogdet, solve
+from numpy.linalg.linalg import LinAlgError
+from scipy.sparse.linalg import spsolve
+from scipy.linalg import lu_factor, lu_solve
 
 
 def d2(x,y):
@@ -30,7 +33,7 @@ def astrometry_cov(d2,scale=100.,amp=np.eye(2),var=None):
             C += diag(var)
 
         # If measurement uncertainty is a vector of 2x2 matrices
-        elif np.shape(var) == (C.shape[0], 2, 2):
+        elif np.shape(var) == (C.shape[0]/2, 2, 2):
             C += sp.linalg.block_diag( *[v for v in var] )
 
     return C
@@ -124,8 +127,6 @@ def regression(objectsA, objectsB, xyarr, P, scale, amp, chol):
     dxy = np.array([dx, dy]).T.flatten()
 
     v += C.dot(cho_solve(chol, dxy)).reshape(v.shape)
-
-    # Add mean function
     vx = v[:,0]
     vy = v[:,1]
 
@@ -166,23 +167,43 @@ def optimise_HP(A, B, P, HP0):
 
     # Define loglikelihood function for gaussian process given data
     def lnprob_cov(C):
-        
-        # Cholesky computation with numpy
-        U, luflag = cho_factor(C)
-        
+
         # Get first term of loglikelihood expression (y * (1/C) * y.T)
-        x2 = cho_solve((U, luflag), dxy)
-        L1 = dxy.dot(x2)
+        
+        # Use np.linalg.solve
+        #try:
+        #    L1 = dxy.dot(solve(C,dxy))
+        #except:
+        #    print (C - C.T).min(), (C-C.T).max()
+
+        # Do computation using Cholesky decomposition
+        try:
+            U, luflag = cho_factor(C)
+            x2 = cho_solve((U, luflag), dxy)
+            L1 = dxy.dot(x2)
+        except LinAlgError:
+            #print "EV tweak"
+            E, EV = eigh(C)
+            Ep = 1/E
+            Ep[abs(Ep)>1e5] = 0
+            Ci = EV.T.dot(np.diag(Ep)).dot(EV)
+            L1 = Ci.dot(dxy)
+                    
+        # Use LU decomposition
+        #LU, luflag = lu_factor(C)
+        #x2 = lu_solve((LU,luflag), dxy)
+        #L1 = dxy.dot(x2)
 
         # Get second term of loglikelihood expression (log det C)
-        L2 = np.sum( 2*np.log(np.diag(U)) )
+        #L2 = np.sum( 2*np.log(np.diag(U)) )
+        sign, L2 = slogdet(C)
 
         # Why am I always confused by this?
         thing_to_be_minimised = (L1 + L2)
 
         return thing_to_be_minimised
 
-    def make_pos(scale, amp, crossamp):
+    def make_pos(scale, amp, crossamp=0):
         """Make scale and amplitude parameters positive, and 
         amplitude matrix positive semi-definite. """
 
@@ -197,7 +218,7 @@ def optimise_HP(A, B, P, HP0):
         #  just less than that of the  diagonal if required, but
         #  keep its overall sign.
         if crossamp*crossamp >= amp_pos*amp_pos:
-            crossamp = (0.99 * amp_pos) * (crossamp / np.abs(crossamp))
+            crossamp = 0#(0.99 * amp_pos) * (crossamp / np.abs(crossamp))
 
         amp_M = np.array([ [amp_pos, crossamp], [crossamp, amp_pos] ])
 
@@ -220,11 +241,12 @@ def optimise_HP(A, B, P, HP0):
 
         #print scale_pos
         #print ampM_pos
+        #print llik
         return llik
 
     # Perform optimisation
-    ML_HP = fmin(lnprob_HP,HP0, xtol=1.0e-2, ftol=1.0e-6, disp=False)
-    #ML_HP = fmin_bfgs(lnprob_HP,HP0, disp=False)
+    #ML_HP = fmin(lnprob_HP,HP0, xtol=1.0e-2, ftol=1.0e-6, disp=False)
+    ML_HP = fmin_bfgs(lnprob_HP,HP0, disp=False)
 
     scale_pos, ampM_pos = make_pos(*ML_HP)
     return scale_pos, ampM_pos, lnprob_HP(ML_HP)
