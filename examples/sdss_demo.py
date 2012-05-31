@@ -54,6 +54,6 @@ print R
 
 # Regression of an array of distributions
 print 'Multiple distribution regression'
-BV = [pyBA.Bivarg(mu=xyi) for xyi in xy]
+BV = [pyBA.Bivarg(mu=xyi, sigma=np.random.rand(2)) for xyi in xy]
 R = D.regression(BV)
 print R
