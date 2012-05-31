@@ -46,8 +46,6 @@ BV = pyBA.Bivarg()
 R = D.regression(BV)
 print R
 
-print R[0].sigma
-
 # Regression of an array of points
 print 'Multiple point regression'
 xy = 100*np.random.rand(10,2) - 50
