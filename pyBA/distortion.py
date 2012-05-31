@@ -1,12 +1,9 @@
 import numpy as np
 import scipy as sp
-from numpy import linspace, array, meshgrid, sqrt
+from numpy import array
 from pyBA.classes import Bgmap, Bivarg
-from numpy.linalg import norm, eigh, slogdet, solve
+from numpy.linalg import eigh, slogdet
 from numpy.linalg.linalg import LinAlgError
-from scipy.sparse.linalg import spsolve
-from scipy.linalg import lu_factor, lu_solve
-
 
 def d2(x,y):
     """For two n x 2 vectors (can be the same), compute the squared
@@ -19,6 +16,7 @@ def astrometry_cov(d2,scale=100.,amp=np.eye(2),var=None):
     """Evaluate covariance for gaussian process,
     given squared distance matrix and covariance parameters."""
     from numpy import exp, diag
+    from scipy.linalg import block_diag
     
     S = exp( -d2 / scale ) # Correlation matrix
     C = np.kron(S, amp)    # Covariance matrix
@@ -34,7 +32,7 @@ def astrometry_cov(d2,scale=100.,amp=np.eye(2),var=None):
 
         # If measurement uncertainty is a vector of 2x2 matrices
         elif np.shape(var) == (C.shape[0]/2, 2, 2):
-            C += sp.linalg.block_diag( *[v for v in var] )
+            C += block_diag( *[v for v in var] )
 
     return C
 
@@ -109,7 +107,7 @@ def regression(objectsA, objectsB, xyarr, P, scale, amp, chol):
     the distortion map. This uses the input data to push known
     values onto a new grid, using the covariance properties of
     the GP."""
-    
+
     # Compute empirical displacements
     xobs, yobs, vxobs, vyobs, _, _ = compute_displacements(objectsA, objectsB)
     xyobs = np.array([xobs.flatten(),yobs.flatten()]).T
@@ -169,13 +167,6 @@ def optimise_HP(A, B, P, HP0):
     def lnprob_cov(C):
 
         # Get first term of loglikelihood expression (y * (1/C) * y.T)
-        
-        # Use np.linalg.solve
-        #try:
-        #    L1 = dxy.dot(solve(C,dxy))
-        #except:
-        #    print (C - C.T).min(), (C-C.T).max()
-
         # Do computation using Cholesky decomposition
         try:
             U, luflag = cho_factor(C)
@@ -189,13 +180,7 @@ def optimise_HP(A, B, P, HP0):
             Ci = EV.T.dot(np.diag(Ep)).dot(EV)
             L1 = Ci.dot(dxy)
                     
-        # Use LU decomposition
-        #LU, luflag = lu_factor(C)
-        #x2 = lu_solve((LU,luflag), dxy)
-        #L1 = dxy.dot(x2)
-
         # Get second term of loglikelihood expression (log det C)
-        #L2 = np.sum( 2*np.log(np.diag(U)) )
         sign, L2 = slogdet(C)
 
         # Why am I always confused by this?

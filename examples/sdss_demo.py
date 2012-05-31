@@ -20,9 +20,7 @@ objectsA = np.array( [ pyBA.Bivarg(mu=[x["master_dra"],x["master_ddec"]],sigma=n
 objectsB = np.array( [ pyBA.Bivarg(mu=[x["dra"],x["ddec"]], sigma=np.array([x["raerr"],x["decerr"]])) for x in data ] )
 
 # Suggest starting point for background mapping
-from pyBA.background import distance
 S = pyBA.background.suggest_mapping(objectsA,objectsB)
-print S.mu
 
 # Get maximum a posteriori background mapping parameters
 P = pyBA.background.MAP( objectsA, objectsB, mu0=S.mu, prior=pyBA.Bgmap(), norm_approx=True )
@@ -30,18 +28,34 @@ print P.mu
 
 # Create astrometric mapping object
 D = pyBA.Amap(P,objectsA, objectsB)
-#D.build_covariance(scale=10.0)
-
-# Plotting prior to conditioning
-#D.draw_realisation()
 
 # Condition GP
 D.condition()
-
 print D.scale
-
 print D.amp
 
-#D.build_covariance(scale=500.0)
+# Regression of a single point
+print 'Single point regression'
+xy = np.array([0,0])
+R = D.regression(xy)
+print R
 
-D.draw_realisation()
+# Regression of a single distribution
+print 'Single distribution regression'
+BV = pyBA.Bivarg()
+R = D.regression(BV)
+print R
+
+print R[0].sigma
+
+# Regression of an array of points
+print 'Multiple point regression'
+xy = 100*np.random.rand(10,2) - 50
+R = D.regression(xy)
+print R
+
+# Regression of an array of distributions
+print 'Multiple distribution regression'
+BV = [pyBA.Bivarg(mu=xyi) for xyi in xy]
+R = D.regression(BV)
+print R
