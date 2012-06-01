@@ -93,7 +93,7 @@ class Bgmap:
         from pyBA.distortion import astrometry_mean as mu_transform
 
         # Sample background mapping distribution
-        N = 1000 # Free parameter: how many samples to draw when evaluating covariance?
+        N = 10000 # Free parameter: how many samples to draw when evaluating covariance?
         #P = self.sample(n=N)
 
         # If the rotation and scaling parameters are sufficiently close to identity, then the variance contribution
@@ -116,22 +116,22 @@ class Bgmap:
                 self.sigma[:,i] = 0
                 self.sigma[i,i] = self.sigma[2,2]
 
-#        if theta_dep < tol and L1_dep < tol and L2_dep < tol:
-#            # Variance from background mapping is approximately independent of location.
-#                
-#            # Compute covariance contribution for a single object
-#            s_P = np.cov([xy[0].transform(p).mu for p in self.sample(N)], rowvar=0)
-#
-#            # And stack that result for all the input object locations
-#            S_P = np.array([s_P for i in range(len(xy))])
-#
-#        else:
-#            # Otherwise, for each input object location, compute the variance of
-#            #  the transformed centres across all sampled transformations.
-#            S_P = np.array([np.cov([o.transform(p).mu for p in self.sample(N)], rowvar=0) for o in xy])
-#            #S_P = np.array([np.cov([mu_transform(o.mu,p) for p in self.sample(N)], rowvar=0) for o in xy])
+        if theta_dep < tol and L1_dep < tol and L2_dep < tol:
+            # Variance from background mapping is approximately independent of location.
+                
+            # Compute covariance contribution for a single object
+            s_P = np.cov([xy[0].transform(p).mu for p in self.sample(N)], rowvar=0)
 
-        S_P = np.array([np.cov([o.transform(p).mu for p in self.sample(N)], rowvar=0) for o in xy])
+            # And stack that result for all the input object locations
+            S_P = np.array([s_P for i in range(len(xy))])
+
+        else:
+            # Otherwise, for each input object location, compute the variance of
+            #  the transformed centres across all sampled transformations.
+            S_P = np.array([np.cov([o.transform(p).mu for p in self.sample(N)], rowvar=0) for o in xy])
+            #S_P = np.array([np.cov([mu_transform(o.mu,p) for p in self.sample(N)], rowvar=0) for o in xy])
+
+        #S_P = np.array([np.cov([o.transform(p).mu for p in self.sample(N)], rowvar=0) for o in xy])
 
         return S_P
         
@@ -403,8 +403,8 @@ class Amap:
 
         from pyBA.distortion import optimise_HP
 
-        #HP0 = [self.scale, self.amp[0,0], self.amp[0,1]]
-        HP0 = [self.scale, self.amp[0,0]]
+        HP0 = [self.scale, self.amp[0,0], self.amp[0,1]]
+        #HP0 = [self.scale, self.amp[0,0]]
 
         # Optimise hyperparameters
         ML_output = optimise_HP(self.A, self.B, self.P, HP0)

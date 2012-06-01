@@ -36,7 +36,7 @@ D = pyBA.Amap(P,objectsA, objectsB)
 # Condition GP
 D.condition()
 print D.scale
-print D.amp
+print D.amp.ravel()
 
 # Regression of a single point
 print 'Single point regression'
