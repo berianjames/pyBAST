@@ -36,17 +36,25 @@ def astrometry_cov(d2,scale=100.,amp=np.eye(2),var=None):
 
     return C
 
-def astrometry_mean(xy, T=Bgmap()):
+def astrometry_mean(xy, P=Bgmap()):
     """Mean functions for the gaussian process
     astrometric solution. Takes affine transformation
     and applies it to n x 2 vector of points."""
 
     # Prep inputs
-    dmu = T.mu[0:2]
-    theta = T.mu[2]
-    d0 = T.mu[3:5]
-    L = T.mu[5:7]
-    
+    if P.__class__.__name__ == 'Bgmap':
+        dmu = P.mu[0:2]
+        theta = P.mu[2]
+        d0 = P.mu[3:5]
+        L = P.mu[5:7]    
+    elif P.__class__.__name__ == 'ndarray':
+        dmu = P[0:2]
+        theta = P[2]
+        d0 = P[3:5]
+        L = P[5:7]
+    else:
+        raise TypeError('Argument to background mapping transform should be a Bgmap object or a 7-vector of parameters.')
+
     U = np.squeeze(np.array([ [np.cos(theta),-np.sin(theta)],
                               [np.sin(theta), np.cos(theta)] ]))
         
@@ -169,17 +177,23 @@ def optimise_HP(A, B, P, HP0):
         # Get first term of loglikelihood expression (y * (1/C) * y.T)
         # Do computation using Cholesky decomposition
         try:
+            
             U, luflag = cho_factor(C)
+            
+        except LinAlgError:
+
+            # Matrix is not positive semi-definite, so replace it with the 
+            #  positive semi-definite matrix that is nearest in the Frobenius norm
+
+            E, EV = eigh(C)
+            E[E<0] = 1e-12
+            U, luflag = cho_factor(EV.dot(np.diag(Ep)).dot(EV.T))
+            
+        finally:
+
             x2 = cho_solve((U, luflag), dxy)
             L1 = dxy.dot(x2)
-        except LinAlgError:
-            #print "EV tweak"
-            E, EV = eigh(C)
-            Ep = 1/E
-            Ep[abs(Ep)>1e5] = 0
-            Ci = EV.T.dot(np.diag(Ep)).dot(EV)
-            L1 = Ci.dot(dxy)
-                    
+
         # Get second term of loglikelihood expression (log det C)
         sign, L2 = slogdet(C)
 

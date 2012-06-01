@@ -90,35 +90,48 @@ class Bgmap:
         Input: xy, an array of n bivargs, at whose centres the uncertainty contribution will be calculated
         Output: S_P, an array of n 2x2 covariance matrices, one for each input location. 
         """
+        from pyBA.distortion import astrometry_mean as mu_transform
 
         # Sample background mapping distribution
-        N = 100 # Free parameter: how many samples to draw when evaluating covariance?
-        P = self.sample(n=N)
+        N = 1000 # Free parameter: how many samples to draw when evaluating covariance?
+        #P = self.sample(n=N)
 
         # If the rotation and scaling parameters are sufficiently close to identity, then the variance contribution
         #  from the background mapping will be independent of location in the plane (essentially, all the contribution
         #  is from the translation). In this case, the covariance contribution need only be computed once.
-        tol = 0.005 # Threshold for deciding whether variance contribution is independent of location in the plane
+        tol = 1 # Threshold for deciding whether variance contribution is independent of location in the plane
 
         # To check whether the variance contribution is location independent, look at how much the rotation and
         #  scaling parameters differ from their identity values.
-        theta_dep = self.mu[2] / self.sigma[2,2]
-        L1_dep = (1 - self.mu[5]) / self.sigma[5,5]
-        L2_dep = (1 - self.mu[6]) / self.sigma[6,6]
+        theta_dep = np.abs(self.mu[2]) / np.sqrt(self.sigma[2,2])
+        L1_dep = np.abs(1 - self.mu[5]) / np.sqrt(self.sigma[5,5])
+        L2_dep = np.abs(1 - self.mu[6]) / np.sqrt(self.sigma[6,6])
 
-        if theta_dep < tol and L1_dep < tol and L2_dep < tol:
-            # Variance from background mapping is approximately independent of location.
+        # If rotation parameter is very close to zero, the centre of rotation will be unconstrained. Numerically,
+        #  it is better to set the centre of rotation to zero in this case.
+        if theta_dep < tol:
+            self.mu[3:4] = 0
+            for i in (3,4):
+                self.sigma[i,:] = 0
+                self.sigma[:,i] = 0
+                self.sigma[i,i] = self.sigma[2,2]
 
-            # Compute covariance contribution for a single object
-            s_P = np.cov([xy[0].transform(p).mu for p in P], rowvar=0)
+#        if theta_dep < tol and L1_dep < tol and L2_dep < tol:
+#            # Variance from background mapping is approximately independent of location.
+#                
+#            # Compute covariance contribution for a single object
+#            s_P = np.cov([xy[0].transform(p).mu for p in self.sample(N)], rowvar=0)
+#
+#            # And stack that result for all the input object locations
+#            S_P = np.array([s_P for i in range(len(xy))])
+#
+#        else:
+#            # Otherwise, for each input object location, compute the variance of
+#            #  the transformed centres across all sampled transformations.
+#            S_P = np.array([np.cov([o.transform(p).mu for p in self.sample(N)], rowvar=0) for o in xy])
+#            #S_P = np.array([np.cov([mu_transform(o.mu,p) for p in self.sample(N)], rowvar=0) for o in xy])
 
-            # And stack that result for all the input object locations
-            S_P = np.array([s_P for i in range(len(xy))])
-
-        else:
-            # Otherwise, for each input object location, compute the variance of
-            #  the transformed centres across all sampled transformations.
-            S_P = np.array([np.cov([o.transform(p).mu for p in P], rowvar=0) for o in xy])
+        S_P = np.array([np.cov([o.transform(p).mu for p in self.sample(N)], rowvar=0) for o in xy])
 
         return S_P
         
@@ -195,14 +208,20 @@ class Bivarg:
     def __repr__(self):
         """ Print beautiful representation of bivarg object.
         """
-        reprstr = str(self.mu) + ' ' + str(self.sigma.ravel()[np.array([0, 3, 1])])
+        reprstr = str(self.mu) + ' ' + str(self.sigma.ravel())
         return reprstr
 
     def __str__(self):
         """ Print more verbose representation of bivarg."""
+        
+        if self.point == True:
+            rho_str = '---'
+        else:
+            rho_str = str(self.sigma[0,1] / np.sqrt(self.sigma[0,0]*self.sigma[1,1]))
+
         strstr = 'mu: ' + str(self.mu) + ', ' + \
             '[sxx syy]: ' + str(np.sqrt(self.sigma.ravel()[np.array([0,3])])) + ', ' + \
-            'rho_xy: ' + str(self.sigma[0,1] / np.sqrt(self.sigma[0,0]*self.sigma[1,1]))
+            'rho_xy: ' + rho_str
         return strstr
 
     def transform(self,P=Bgmap()):
@@ -481,4 +500,4 @@ class Amap:
         # Construct output array of Bivargs
         O = np.array([ Bivarg(mu=munew[i], sigma=sigmanew[i]) for i in range(len(R)) ])
 
-        return O
+        return O, S_gp, S_P

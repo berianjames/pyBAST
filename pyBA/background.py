@@ -104,10 +104,10 @@ def MAP(M,N,mu0=Bgmap().mu,prior=Bgmap(),norm_approx=True):
         try:
             np.linalg.cholesky(sigma)
         except np.linalg.linalg.LinAlgError:
-            # Flip sign of eigenvalues. This is different to the method of Higham (2002) but
-            #  performs well for these matrices.
+            # Zero negative eigenvalues. This is the method of Higham (2002).
             E, V = np.linalg.eigh(sigma)
-            sigma = V.dot(np.diag(np.abs(E)).dot(V.T))
+            E[E<0] = 1e-12
+            sigma = V.dot(np.diag(E).dot(V.T))
         
         return Bgmap( mu=ML, sigma=sigma )
 

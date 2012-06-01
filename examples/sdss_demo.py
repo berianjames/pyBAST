@@ -42,22 +42,22 @@ print D.amp
 print 'Single point regression'
 xy = np.array([0,0])
 R = D.regression(xy)
-print R
+print R[0]
 
 # Regression of a single distribution
 print 'Single distribution regression'
 BV = pyBA.Bivarg()
 R = D.regression(BV)
-print R
+print R[0]
 
 # Regression of an array of points
 print 'Multiple point regression'
 xy = 100*np.random.rand(10,2) - 50
 R = D.regression(xy)
-print R
+print R[0]
 
 # Regression of an array of distributions
 print 'Multiple distribution regression'
 BV = [pyBA.Bivarg(mu=xyi, sigma=np.random.rand(2)) for xyi in xy]
 R = D.regression(BV)
-print R
+print R[0]
