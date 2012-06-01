@@ -84,11 +84,32 @@ def MAP(M,N,mu0=Bgmap().mu,prior=Bgmap(),norm_approx=True):
                 P3 = ML + delta*units[i,:] - delta*units[j,:]
                 P4 = ML - delta*units[i,:] - delta*units[j,:]
 
-                sigma[i,j] = lnprob(P1,M,N) - lnprob(P2,M,N) - lnprob(P3,M,N) + lnprob(P4,M,N)
+                sigma[i,j] = - (lnprob(P1,M,N) - lnprob(P2,M,N) - lnprob(P3,M,N) + lnprob(P4,M,N))
                 sigma[i,j] = sigma[i,j] / (4*delta*delta)
                 sigma[j,i] = sigma[i,j]
 
-        return Bgmap( mu=ML, sigma=inv(sigma) )
+
+        sigma = inv(sigma)
+
+        # Ensure variances are positive
+        for i in range(7):
+            if sigma[i,i] < 0:
+                # If variance on diagonal is negative, flip its values
+                #  and those of the associated covariances.
+                sigma[i,:] = -1*sigma[i,:]
+                sigma[:,i] = -1*sigma[:,i]
+                sigma[i,i] = -1*sigma[i,i]
+
+        # Ensure matrix can be Cholesky decomposed (i.e. that it is positive semidefinite)
+        try:
+            np.linalg.cholesky(sigma)
+        except np.linalg.linalg.LinAlgError:
+            # Flip sign of eigenvalues. This is different to the method of Higham (2002) but
+            #  performs well for these matrices.
+            E, V = np.linalg.eigh(sigma)
+            sigma = V.dot(np.diag(np.abs(E)).dot(V.T))
+        
+        return Bgmap( mu=ML, sigma=sigma )
 
 def MCMC(M,N,mu0=Bgmap().mu,prior=Bgmap(),nsamp=1000,nwalkers=20):
     """ Performs MCMC computation of likelihood distribution for the 

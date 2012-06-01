@@ -7,6 +7,8 @@ import pyBA
 import sdss
 import numpy as np
 
+np.set_printoptions(linewidth=125,suppress=True,precision=3)
+
 # Load data
 data = sdss.csv2rec("match_astrom_342.1914_-0.90194_run4198.dat")
 nties = len(data)
@@ -25,6 +27,8 @@ S = pyBA.background.suggest_mapping(objectsA,objectsB)
 # Get maximum a posteriori background mapping parameters
 P = pyBA.background.MAP( objectsA, objectsB, mu0=S.mu, prior=pyBA.Bgmap(), norm_approx=True )
 print P.mu
+
+pass
 
 # Create astrometric mapping object
 D = pyBA.Amap(P,objectsA, objectsB)

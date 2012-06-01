@@ -75,12 +75,54 @@ class Bgmap:
     def sample(self,n=1):
         """ Returns n samples from a Bgmap distribution.
         """
-        # N.B.! Won't work with covariance matrices containings infs!
-        
-        #vals = np.zeros( (n,len(self.mu)) )
-        stds = np.random.randn( 2,len(self.mu) )
+
+        stds = np.random.randn( len(self.mu), n )
         chol = cholesky(self.sigma)
-        return [self.mu + np.dot( chol, stds[:,i] ).T for i in range(n)]
+        samps = (self.mu + chol.dot(stds).T) 
+
+        return samps
+
+    def uncertainty(self,xy):
+        """ Computes a 2x2 covariance matrix representing the contribution to
+        the uncertainity from the background mapping distribution, at each input
+        location xy.
+        
+        Input: xy, an array of n bivargs, at whose centres the uncertainty contribution will be calculated
+        Output: S_P, an array of n 2x2 covariance matrices, one for each input location. 
+        """
+
+        # Sample background mapping distribution
+        N = 100 # Free parameter: how many samples to draw when evaluating covariance?
+        P = self.sample(n=N)
+
+        # If the rotation and scaling parameters are sufficiently close to identity, then the variance contribution
+        #  from the background mapping will be independent of location in the plane (essentially, all the contribution
+        #  is from the translation). In this case, the covariance contribution need only be computed once.
+        tol = 0.005 # Threshold for deciding whether variance contribution is independent of location in the plane
+
+        # To check whether the variance contribution is location independent, look at how much the rotation and
+        #  scaling parameters differ from their identity values.
+        theta_dep = self.mu[2] / self.sigma[2,2]
+        L1_dep = (1 - self.mu[5]) / self.sigma[5,5]
+        L2_dep = (1 - self.mu[6]) / self.sigma[6,6]
+
+        if theta_dep < tol and L1_dep < tol and L2_dep < tol:
+            # Variance from background mapping is approximately independent of location.
+
+            # Compute covariance contribution for a single object
+            s_P = np.cov([xy[0].transform(p).mu for p in P], rowvar=0)
+
+            # And stack that result for all the input object locations
+            S_P = np.array([s_P for i in range(len(xy))])
+
+        else:
+            # Otherwise, for each input object location, compute the variance of
+            #  the transformed centres across all sampled transformations.
+            S_P = np.array([np.cov([o.transform(p).mu for p in P], rowvar=0) for o in xy])
+
+        return S_P
+        
+        
             
 class Bivarg:
     """ Implements bivariate gaussian structure and routines to modify it.
@@ -427,9 +469,14 @@ class Amap:
         # Add regression residuals to mean function
         munew = np.array([o.mu for o in R]) + vxy
 
-        # Add regression uncertainty 
-        Sdiag = np.array([S[i:i+2,i:i+2] for i in range(0,len(S),2)])
-        sigmanew = np.array([o.sigma for o in R]) + Sdiag
+        # Get regression uncertainty from background mapping
+        S_P = self.P.uncertainty(XY)
+
+        # Get regression uncertainty from gaussian process
+        S_gp = np.array([S[i:i+2,i:i+2] for i in range(0,len(S),2)])
+
+        # Combine uncertainties into single covariance matrix
+        sigmanew = np.array([o.sigma for o in R]) + S_gp + S_P
 
         # Construct output array of Bivargs
         O = np.array([ Bivarg(mu=munew[i], sigma=sigmanew[i]) for i in range(len(R)) ])
