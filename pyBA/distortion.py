@@ -244,7 +244,7 @@ def optimise_HP(A, B, P, HP0):
         return llik
 
     # Perform optimisation
-    ML_HP = fmin(lnprob_HP,HP0, xtol=1.0e-2, ftol=1.0e-6, disp=False, maxiter=150)
+    ML_HP = fmin(lnprob_HP,HP0, xtol=1.0e-2, ftol=1.0e-6, disp=False, maxiter=1500)
     #ML_HP = fmin_bfgs(lnprob_HP,HP0, disp=False, maxiter=150)
 
     scale_pos, ampM_pos = make_pos(*ML_HP)
