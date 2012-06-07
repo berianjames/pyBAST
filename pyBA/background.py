@@ -68,7 +68,8 @@ def MAP(M,N,mu0=Bgmap().mu,prior=Bgmap(),norm_approx=True):
         return llik + prior.llik(P)
 
     ML = fmin( lnprob,mu0,args=(M,N,prior),callback=None,
-               xtol=1.0e-2, ftol=1.0e-6, disp=False, maxiter=150)
+               xtol=1.0e-2, ftol=1.0e-6, disp=False, 
+               maxiter=150, warnflag=2)
 
     if norm_approx is False:
         return Bgmap(mu=ML)
