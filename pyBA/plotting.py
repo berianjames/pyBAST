@@ -5,9 +5,9 @@ from pyBA.classes import Bivarg, Bgmap
 
 def draw_objects(objects=np.array( [Bivarg()] ), replot='no'):
     ells = [Ellipse(xy=O.mu, 
-                    width=2.0*np.sqrt(O.E[0]),
-                    height=2.0*np.sqrt(O.E[1]), 
-                    angle=O.theta*180/np.pi)
+                    width=2.0*np.sqrt(O.E[0,0]),
+                    height=2.0*np.sqrt(O.E[1,1]), 
+                    angle=O.theta)
             for O in objects]
 
     # Decide if plot is to be on top of whatever is already plotted
