@@ -8,6 +8,8 @@ See the license file as part of this project on github.
 
 usage: see the associated ipython notebook in this folder.
 
+Code:
+https://github.com/berianjames/pyBAST
 """
 
 import os, sys, string,urllib2,urllib,copy
@@ -19,13 +21,15 @@ import numpy as np
 from matplotlib.mlab import csv2rec
 
 class sdssq(object):
-
+    """
+    query object for Stripe82
+    """
     #dr_url="http://cas.sdss.org/astrodr7/en/tools/search/x_sql.asp"
     dr_url="http://cas.sdss.org/stripe82/en/tools/search/x_sql.asp"
     formats = ['csv','xml','html']
     def_fmt = "csv"
-    sdss_coadd_platescale = 0.396127 ## arcsec/pix
-    def_t0 = 5.21972623E4  # fidual time
+    sdss_coadd_platescale = 0.396127      ## arcsec/pix
+    def_t0                = 5.21972623E4  # fidual start time (days)
     
     def _filtercomment(self,sql):
         "Get rid of comments starting with --. Function from Tomas Budavari's code (sqlcl.py)"
@@ -54,11 +58,12 @@ class sdssq(object):
             print "err"
             print rez.readlines()
             
-    def _query(self,sql,url=dr_url,fmt=def_fmt):
+    def _query(self,sql,url=dr_url,fmt=def_fmt,verbose=False):
         "Run query and return file object"
 
         fsql = self._filtercomment(sql)
-        print fsql
+        if verbose:
+            print fsql
         params = urllib.urlencode({'cmd': fsql, 'format': fmt})
         try:
                 return StringIO.StringIO(urllib2.urlopen(url+'?%s' % params).read())
@@ -99,6 +104,8 @@ class sdssq(object):
     def write_match_files(self,master,pos=(342.1913750,-0.9019444), scale=sdss_coadd_platescale,\
         runids=[4198],t0=def_t0):
         
+        self.generated_match_files = []
+        
         if isinstance(runids,str):
             if runids == "all":
                 runids = list(set(master.run))
@@ -137,25 +144,25 @@ class sdssq(object):
             fname = "match_astrom_%.4f_%.5f_run%i.dat" % (pos[0],pos[1],r)
             f = open(fname,"w")
             f.write("# filename: %s \n" % fname)
-            f.write("# nominal center (used for x,y conversion): %f %f\n" % (pos[0],pos[1]))
+            f.write("# nominal center (used for x,y conversion): %f, %f\n" % (pos[0],pos[1]))
             if gotit:
-                f.write("# source of interest:\n")
-                f.write("#   master_objid = %i,  master_ra = %f, master_dec = %f \n" % \
+                f.write("# source of interest\n")
+                f.write("#   master_objid: %i\n#    master_pos: %f, %f\n" % \
                         (bestid,mpos[0],mpos[1]))
                 ttt = np.where(tmp["master_objid"] == bestid)
-                f.write("#   fiducal master location (delta ra, delta dec): %f %f\n" % \
+                f.write("#   fiducal master location (delta ra, delta dec): %f, %f\n" % \
                         (convra(mpos[0]),convdec(mpos[1])))
-                if len(ttt) > 0:
-                    f.write("# converted source location (delta ra, delta dec): %f %f\n" % \
+                if len(ttt[0]) > 0:
+                    f.write("# converted source location (delta ra, delta dec): %f, %f\n" % \
                             (convra(tmp[ttt]["ra"]),convdec(tmp[ttt]["dec"])))
-                    f.write("# source location (ra, dec): %f %f\n" % \
+                    f.write("# source location (ra, dec): %f, %f\n" % \
                                     (tmp[ttt]["ra"],tmp[ttt]["dec"]))
-                    f.write("# source error (raerr, decerr): %f %f\n" % \
+                    f.write("# source error (raerr, decerr): %f, %f\n" % \
                                 (tmp[ttt]["raerr"],tmp[ttt]["decerr"]))                
             else:
                 f.write("# could not find master source of interest\n")
                 
-            f.write("# observation time %f day (+ %f day)\n" % (tmp["time"][0],t0))
+            f.write("# observation time (day): %f\n# t0 (day): %f\n" % (tmp["time"][0],t0))
             f.write("master_objid,objid,master_ra,master_dec,master_dra,master_ddec")
             f.write(",master_raerr,master_decerr,master_radeccov,ra,dec,dra,ddec,raerr,decerr,radeccov")
             f.write(",master_rmag,rmag\n")
@@ -171,12 +178,15 @@ class sdssq(object):
                 
             f.close()
             print "wrote %i matches in file %s" % (len(tmp[np.where(tmp["master_objid"] != bestid)]),fname)
+            self.generated_match_files.append((fname,len(tmp[np.where(tmp["master_objid"] != bestid)]),tmp["time"][0]))
             
-    # 342.1913750  -0.9019444 J2000
+        ## sort the generated file list by time
+        self.generated_match_files.sort(key=lambda x: x[2])
+        
     def get_master_cat(self,pos=(342.1913750, -0.9019444),errdeg=0.07,rcut=22.5,t0=def_t0,\
         MASTER_PRE = "master_sdss",savefile=True):
         """
-        issue the ugly query to get master catalog positions in stripe82 over time
+        issue the monsterous nested query to get master catalog positions in Stripe82 over time
         """
         master_name = MASTER_PRE + "%.4f_%.5f.npz" % pos
 
@@ -188,10 +198,12 @@ class sdssq(object):
         decmin = pos[1] - 0.5*errdeg ; decmax = pos[1] + 0.5*errdeg
         rc = "and p.r < %f" % rcut if rcut not in [None] else ""
         
+        ### Runs 106 and 206 are the deep coadds from Stripe82. Get the master catalog 
+        ###    about the input position
         q = """SELECT cc.rr0objid as master_objid,cc.rr0ra as master_ra,cc.qdec as master_dec,
                cc.master_decerr,cc.master_raerr,cc.r as master_rmag, cc.darcsec,p.objid,p.r as rmag,
-               cc.ra,cc.dec,p.rowcErr * 0.396127 as raerr,p.colcErr * 0.396127 as decerr,F.mjd_r - %f as time,p.run,p.rerun,p.camcol,p.field
-               from (SELECT p.r, rr0.colcErr * 0.396127 as master_decerr, rr0.rowcErr * 0.396127 as master_raerr, dbo.fdistancearcmineq(rr0.ra,rr0.dec,q.ra,q.dec)*60 as darcsec,q.ra,q.dec,
+               cc.ra,cc.dec,p.rowcErr * %f as raerr,p.colcErr * %f as decerr,F.mjd_r - %f as time,p.run,p.rerun,p.camcol,p.field
+               from (SELECT p.r, rr0.colcErr * %f as master_decerr, rr0.rowcErr * %f as master_raerr, dbo.fdistancearcmineq(rr0.ra,rr0.dec,q.ra,q.dec)*60 as darcsec,q.ra,q.dec,
         p.htmid, q.objid,rr0.objid as rr0objid, rr0.ra as rr0ra,rr0.dec as qdec from
         (SELECT p.objid,p.ra,p.dec,p.rowc,p.rowcErr,p.colc,p.colcErr,
                 p.u,p.g,p.r,p.i,p.z,
@@ -210,7 +222,8 @@ class sdssq(object):
                  -- order by
                  -- time
                 
-        """ % (t0,ramin,ramax,decmin,decmax, rc)
+        """ % (sdss_coadd_platescale, sdss_coadd_platescale, t0, \
+               sdss_coadd_platescale, sdss_coadd_platescale, ramin,ramax,decmin,decmax, rc)
         
         #print q
         rez = self.recquery(q)
