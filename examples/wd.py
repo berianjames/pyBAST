@@ -2,6 +2,10 @@
 # encoding: utf-8
 """
 This file is part of pyBAST, Bayesian Astrometry
+
+Try running this with:
+ main(test=False)
+ 
 Copyright (C) Joshua S. Bloom. All Rights Reserved. 2012.
 
 See the license file as part of this project on github.
@@ -16,6 +20,9 @@ import pyBA
 import sdss
 import numpy as np
 import cPickle as pickle
+from pyBA.plotting import draw_objects
+from pylab import plot, cla, xlim, ylim
+from pylab import show
 
 class WD(object):
     """
@@ -28,11 +35,14 @@ class WD(object):
         self.pos = pos
         
     def run(self,test=True):
-        self.prepare(runids="all" if not test else [2662,4198,7195])
+        """
+        main run method. set test=False if you want to run all the available epochs
+        """
+        self.prepare(runids="all" if not test else [2662,2728,4198,4207,4858,4917,7195])
         self.fit_all()
         self.locate_source()
         
-    def prepare(self,runids=[2662,4198,7195]):
+    def prepare(self,runids=[2662,2728,4198,4207,4858,4917,7195]):
         """
         get's the master catalog around the position and generates match files
         """
@@ -164,6 +174,25 @@ class WD(object):
         
         self.rez = rez
     
+    def plot_rez(self, hack=False):
+        cla()
+        x = [v['pos'][0][0] for k,v in self.rez.iteritems()]
+        t = [float(v['observation time (day)']) for k,v in self.rez.iteritems()]
+        tt = list(np.argsort(t))
+        x = list(np.array(x)[tt])
+        t = list(np.array(t)[tt])
+        
+        mint = min(t) ; maxt = max(t)
+        c = [(y - mint)/(maxt - mint) for y in t]
+        if hack:
+            for i in x:
+                i.E[0][0] = i.E[0][0]**2
+                i.E[1][1] = i.E[1][1]**2
+        
+        draw_objects(x,colors=c,label=True,replot=True,show=False)
+        xlim(-1.5,1.5)
+        ylim(-1.5,1.5)
+        
     def gen_results(self):
         ## TODO:
         ##   make a plot of RA/DEC v. time
@@ -171,9 +200,11 @@ class WD(object):
         ##   calculate the proper motion
         pass
            
-def main(test=True):
+def main(test=True,hack=True):
     w = WD()
     w.run(test=test)
+    w.plot_rez(hack=hack)
+    show()
     return w
 
 

@@ -1,29 +1,67 @@
-from pylab import plot, show, quiver, figure, gca, imshow, colorbar
+from pylab import plot, show, quiver, figure, gca, imshow, colorbar, draw
 from matplotlib.patches import Ellipse
 import numpy as np
 from pyBA.classes import Bivarg, Bgmap
+from matplotlib import pyplot, mpl
+import matplotlib.pyplot as plt
+import matplotlib.colors as cols
+import matplotlib.cm as cmx
 
-def draw_objects(objects=np.array( [Bivarg()] ), replot='no'):
+
+def draw_objects(objects=np.array( [Bivarg()] ), replot=False, alpha=0.2,figsize=(10,10),scale=1.0,
+                show=False,colors="b",label=False):
+    """
+    scale : allow you to blow up or down the ellipses (defualt: 1.0)
+    alpha: transparency for each ellipse (scalar or vector of length objects)
+    """
     ells = [Ellipse(xy=O.mu, 
-                    width=2.0*np.sqrt(O.E[0,0]),
-                    height=2.0*np.sqrt(O.E[1,1]), 
+                    width=scale*2.0*np.sqrt(O.E[0,0]),
+                    height=scale*2.0*np.sqrt(O.E[1,1]), 
                     angle=O.theta)
             for O in objects]
-
+    
+    jet = cm = plt.get_cmap('jet') 
+    
+            
     # Decide if plot is to be on top of whatever is already plotted
-    if replot is 'no':
-        fig = figure(figsize=(10,10))
+    if not replot:
+        fig = figure(figsize=figsize)
         ax = fig.add_subplot(111, aspect='equal')
     else:
         ax = gca()
 
-    for e in ells:
+    if isinstance(alpha,float) or isinstance(alpha,int):
+        alphas = np.ones(len(ells))*alpha
+    else:
+        if len(alpha) != len(ells):
+            alphas = np.ones(len(ells))*alpha[0]
+        else:
+            alphas = alpha
+
+    if not isinstance(colors,list):
+        colors = [colors for x in range(len(ells))]
+                            
+    if len(colors) != len(ells):
+        colors = [colors[0] for x in range(len(ells))]
+        
+    cNorm  = cols.Normalize(vmin=colors[0], vmax=colors[-1])
+    scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=jet)
+
+    for i,e in enumerate(ells):
         ax.add_artist(e)
         e.set_clip_box(ax.bbox)
-        e.set_alpha(.1)
+        e.set_alpha(alphas[i])
+        e.set_facecolor(scalarMap.to_rgba(colors[i]))
+    
+    if label:
+        ax.set_xlabel("RA offset arcsec")
+        ax.set_ylabel("DEC offset arcsec")
+        
+    #ax.autoscale(enable=None, axis='both', tight=True)
 
-    ax.autoscale(enable=None, axis='both', tight=True)
-    if replot is 'no':
+    draw()
+    
+    if show:
         show()
 
     return ells
