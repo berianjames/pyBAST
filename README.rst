@@ -4,7 +4,7 @@
 
 :Date: May 22, 2012
 :Version: 0.3
-:Authors: Berian James, Josh Bloom
+:Authors: Berian James, Joshua S. Bloom
 :Web site: https://github.com/berianjames/pyBAST
 :Copyright: This document has been placed in the public domain.
 :License: This code is released under the MIT license.

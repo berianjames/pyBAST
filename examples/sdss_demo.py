@@ -61,3 +61,5 @@ print 'Multiple distribution regression'
 BV = [pyBA.Bivarg(mu=xyi, sigma=np.random.rand(2)) for xyi in xy]
 R = D.regression(BV)
 print R[0]
+
+

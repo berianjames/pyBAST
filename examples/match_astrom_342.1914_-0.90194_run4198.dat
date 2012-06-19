@@ -1,12 +1,14 @@
 # filename: match_astrom_342.1914_-0.90194_run4198.dat 
-# nominal center (used for x,y conversion): 342.191375 -0.901944
-# source of interest:
-#   master_objid = 8647475119823389164,  master_ra = 342.191518, master_dec = -0.902013 
-#   fiducal master location (delta ra, delta dec): 0.318662 -0.248112
-# converted source location (delta ra, delta dec): 0.263502 -0.155628
-# source location (ra, dec): 342.191493 -0.901988
-# source error (raerr, decerr): 0.026420 0.024358
-# observation time 736.900364 day (+ 52197.262300 day)
+# nominal center (used for x,y conversion): 342.191375, -0.901944
+# source of interest
+#   master_objid: 8647475119823389164
+#    master_pos: 342.191518, -0.902013
+#   fiducal master location (delta ra, delta dec): 0.318662, -0.248112
+# converted source location (delta ra, delta dec): 0.263502, -0.155628
+# source location (ra, dec): 342.191493, -0.901988
+# source error (raerr, decerr): 0.026420, 0.024358
+# observation time (day): 736.900364
+# t0 (day): 52197.262300
 master_objid,objid,master_ra,master_dec,master_dra,master_ddec,master_raerr,master_decerr,master_radeccov,ra,dec,dra,ddec,raerr,decerr,radeccov,master_rmag,rmag
 8647475119823388796,8658188314445217861,342.138708,-0.930045,-117.567942,-101.163060,0.000251,0.000253,0.0,342.138699,-0.930029,-117.588926,-101.103336,0.001380,0.001474,0.0,15.926816,15.920065
 8647475119823389048,8658188314445217917,342.136560,-0.899614,-122.364013,8.391024,0.000864,0.000890,0.0,342.136553,-0.899602,-122.380643,8.432532,0.004910,0.005044,0.0,18.264708,18.265059
