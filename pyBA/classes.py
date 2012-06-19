@@ -78,7 +78,10 @@ class Bgmap:
 
         stds = np.random.randn( len(self.mu), n )
         chol = cholesky(self.sigma)
-        samps = (self.mu + chol.dot(stds).T) 
+        samps = self.mu + chol.dot(stds).T 
+
+        if n == 1:
+            samps = samps.flatten()
 
         return samps
 
