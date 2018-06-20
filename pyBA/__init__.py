@@ -1,4 +1,2 @@
-from classes import Bivarg, Bgmap, Amap
-import background
-import distortion
-import plotting
+from .classes import Bivarg, Bgmap, Amap
+from . import background, distortion, plotting

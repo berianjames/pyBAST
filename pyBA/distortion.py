@@ -21,7 +21,7 @@ def astrometry_cov(d2,scale=100.,amp=np.eye(2),var=None):
     S = exp( -d2 / scale ) # Correlation matrix
     C = np.kron(S, amp)    # Covariance matrix
 
-    if var != None:
+    if var is not None:
         # If scalar measurement uncertainty ('nugget') is used
         if np.size(var) == 1: 
             C += diag(np.tile(var,C.shape[0]))
@@ -245,7 +245,7 @@ def optimise_HP(A, B, P, HP0):
 
     # Perform optimisation
     ML_HP = fmin(lnprob_HP,HP0, xtol=1.0e-2, ftol=1.0e-6, disp=False, 
-                 maxiter=15000, warnflag=2)
+                 maxiter=15000)
     #ML_HP = fmin_bfgs(lnprob_HP,HP0, disp=False, maxiter=150)
 
     scale_pos, ampM_pos = make_pos(*ML_HP)

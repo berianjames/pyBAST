@@ -1,6 +1,8 @@
 import numpy as np
 from numpy.linalg import solve, det, inv
 from pyBA.classes import Bgmap
+from functools import reduce
+
 
 def distance(M,N):
     """ Computes Bhattacharyya distance between two distributions
@@ -63,13 +65,13 @@ def MAP(M,N,mu0=Bgmap().mu,prior=Bgmap(),norm_approx=True):
         M and N.
         """
         llik = 0.5 * np.sum( distance(M[i],N[i].transform(P))
-                          for i in xrange(len(M)) )
+                          for i in range(len(M)) )
 
         return llik + prior.llik(P)
 
     ML = fmin( lnprob,mu0,args=(M,N,prior),callback=None,
                xtol=1.0e-2, ftol=1.0e-6, disp=False, 
-               maxiter=150, warnflag=2)
+               maxiter=150 )
 
     if norm_approx is False:
         return Bgmap(mu=ML)
@@ -124,7 +126,7 @@ def MCMC(M,N,mu0=Bgmap().mu,prior=Bgmap(),nsamp=1000,nwalkers=20):
         M and N.
         """
         llik = -0.5 * np.sum( distance(M[i],N[i].transform(P))
-                          for i in xrange(len(M)) )
+                          for i in range(len(M)) )
 
         if np.all(np.isinf(np.diag(prior.sigma))):
             # De-facto uniform prior; don't bother computing prior llik.
@@ -133,7 +135,7 @@ def MCMC(M,N,mu0=Bgmap().mu,prior=Bgmap(),nsamp=1000,nwalkers=20):
             return llik + prior.llik(P)
 
     ndim = 7
-    p0 = [mu0+np.random.randn(ndim) for i in xrange(nwalkers)]
+    p0 = [mu0+np.random.randn(ndim) for i in range(nwalkers)]
     
     sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=[M,N,prior])
     sampler.run_mcmc(p0, nsamp)

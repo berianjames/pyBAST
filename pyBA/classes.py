@@ -381,11 +381,11 @@ class Amap:
 
         from pyBA.distortion import astrometry_cov
         
-        if scale != None:
+        if scale is not None:
             self.scale = scale
             self.hyperparams['scale'] = scale
 
-        if amp != None:
+        if amp is not None:
             if np.size(amp) == 1:
                 amp = np.array([[amp,0.],[0.,amp]])
             elif np.size(amp) == 2:

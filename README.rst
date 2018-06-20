@@ -21,6 +21,7 @@ analysing the changes to these distributions between images.
 Typical interactive use might look like::
 
     >>> import pyBA
+    >>> import numpy as np
     >>> data = np.loadtxt('examples/astrom_match_stats')
     >>> nties = len(data)
 
@@ -42,6 +43,7 @@ Typical interactive use might look like::
     >>> D.condition()
 
     # Plot regression onto regular grid
+    >>> nres = 30
     >>> D.draw_realisation(res=nres)
 
 This functionality is provided in an example script (pyBAST_example.py) and also, with detailed comments, in an iPython notebook (``pyBAST_example.ipynb``; also in ``pyBAST_example.pdf``).
