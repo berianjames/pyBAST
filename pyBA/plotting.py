@@ -1,8 +1,7 @@
-from pylab import plot, show, quiver, figure, gca, imshow, colorbar, draw
+from pylab import show, quiver, figure, gca, imshow, colorbar, draw
 from matplotlib.patches import Ellipse
 import numpy as np
 from pyBA.classes import Bivarg, Bgmap
-from matplotlib import pyplot, mpl
 import matplotlib.pyplot as plt
 import matplotlib.colors as cols
 import matplotlib.cm as cmx
@@ -188,7 +187,7 @@ def draw_realisation(objectsA, objectsB, P, scale, amp, chol, res = 30):
     
     # If uncertainties are provided, plot them as a background image and colour the
     #  data vectors in white
-    if sx != None:
+    if sx is not None:
         quiver(xobs,yobs,vxobs,vyobs,color='w',scale_units='width',scale=res*res)
 
         sarr = np.array(sx + sy).reshape( x.shape )
